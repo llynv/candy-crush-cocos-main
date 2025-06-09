@@ -9,6 +9,7 @@ import {
   EventTouch,
   Animation,
   EventMouse,
+  UITransform,
 } from 'cc';
 import GameConfig from '../constants/GameConfig';
 import { TileState } from './states/TileState';
@@ -113,6 +114,8 @@ export class Tile extends Component {
 
     if (!spriteFrame) throw new Error(`Sprite frame for ${tileType} not found`);
     this.sprite!.spriteFrame = spriteFrame;
+    const uiTransform = this.sprite!.node.getComponent(UITransform);
+    uiTransform!.setContentSize(55, 55);
   }
 
   public changeState(stateName: string): void {
@@ -159,13 +162,13 @@ export class Tile extends Component {
   }
 
   private onMouseDown(event: EventMouse): void {
+    GameGlobalData.getInstance().setIsMouseDown(true);
+
     this.currentState?.onMouseDown();
 
     for (const callback of this.callbacks) {
       callback(this);
     }
-
-    GameGlobalData.getInstance().setIsMouseDown(true);
   }
 
   private onMouseEnter(event: EventMouse): void {
@@ -174,7 +177,6 @@ export class Tile extends Component {
     }
 
     if (!GameGlobalData.getInstance().getIsMouseDown()) return;
-    console.log('onMouseEnter');
 
     for (const callback of this.callbacks) {
       callback(this);
@@ -184,12 +186,6 @@ export class Tile extends Component {
   private onMouseLeave(event: EventMouse): void {
     if (this.correspondingFrame) {
       this.correspondingFrame.triggerMouseLeave();
-    }
-
-    if (!GameGlobalData.getInstance().getIsMouseDown()) return;
-
-    for (const callback of this.callbacks) {
-      callback(this);
     }
   }
 
