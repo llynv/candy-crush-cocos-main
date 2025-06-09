@@ -14,15 +14,21 @@ import {
 const { ccclass, property } = _decorator;
 import GameConfig from '../constants/GameConfig';
 import { Tile } from './Tile';
+import { Frame } from './Frame';
+import { CONFIG } from './animation-handler/TileAnimationConfig';
 
 @ccclass('GameManager')
 export default class GameManager extends Component {
   private canMove = false;
 
   private tileGrid: (Tile | undefined)[][] = [];
+  private frameGrid: (Frame | undefined)[][] = [];
 
   private firstSelectedTile: Tile | undefined = undefined;
   private secondSelectedTile: Tile | undefined = undefined;
+
+  private maxDifference = 4;
+  private candyTypes: Set<string> = new Set();
 
   @property(Prefab)
   private tilePrefab: Prefab | null = null;
@@ -30,8 +36,12 @@ export default class GameManager extends Component {
   @property(Camera)
   private camera: Camera | null = null;
 
+  @property(Prefab)
+  private framePrefab: Prefab | null = null;
+
   __preload(): void {
     if (this.tilePrefab === null) throw new Error('Tile prefab is not set');
+    if (this.framePrefab === null) throw new Error('Frame prefab is not set');
   }
 
   start(): void {
@@ -41,6 +51,14 @@ export default class GameManager extends Component {
   private createBoard() {
     this.canMove = true;
     this.tileGrid = [];
+    this.frameGrid = [];
+
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+      this.frameGrid[y] = [];
+      for (let x = 0; x < GameConfig.GridWidth; x++) {
+        this.frameGrid[y][x] = this.addFrame(x, y);
+      }
+    }
 
     for (let y = 0; y < GameConfig.GridHeight; y++) {
       this.tileGrid[y] = [];
@@ -55,9 +73,25 @@ export default class GameManager extends Component {
     this.checkMatches();
   }
 
+  private addFrame(x: number, y: number): Frame {
+    const frameNode = instantiate(this.framePrefab) as Node | null;
+    if (frameNode === null) throw new Error('Failed to instantiate frame prefab');
+
+    const frame = frameNode.getComponent(Frame);
+    if (frame === null) throw new Error('Failed to get Frame component');
+
+    const { x: xPos, y: yPos } = this.getTilePosition({ x, y });
+    frameNode.setPosition(xPos, yPos);
+
+    this.node?.addChild(frameNode);
+
+    frame.setTweenDuration(0.15);
+
+    return frame;
+  }
+
   private addTile(x: number, y: number): Tile {
-    const randomTileType: string =
-      GameConfig.CandyTypes[Math.floor(Math.random() * GameConfig.CandyTypes.length)];
+    const randomTileType: string = this.getRandomTileType();
 
     const node = instantiate(this.tilePrefab) as Node | null;
 
@@ -74,10 +108,33 @@ export default class GameManager extends Component {
     const { x: xPos, y: yPos } = this.getTilePosition({ x, y });
     node.setPosition(xPos, yPos);
 
+    const correspondingFrame = this.frameGrid[y][x];
+    if (correspondingFrame) {
+      tile.setFrame(correspondingFrame);
+    }
+
     tile.addOnMouseDownCallback(tile => this.tileDown(tile));
     tile.addOnMouseUpCallback(tile => this.tileDown(tile));
 
     return tile;
+  }
+
+  private getRandomTileType(): string {
+    let flagCount = 100;
+    let randomTileType: string =
+      GameConfig.CandyTypes[Math.floor(Math.random() * GameConfig.CandyTypes.length)];
+
+    while (this.candyTypes.has(randomTileType) && flagCount > 0) {
+      randomTileType =
+        GameConfig.CandyTypes[Math.floor(Math.random() * GameConfig.CandyTypes.length)];
+      flagCount--;
+    }
+
+    if (flagCount === 0) {
+      throw new Error('Failed to get a unique tile type');
+    }
+
+    return randomTileType;
   }
 
   private tileDown(tile: Tile): void {
@@ -88,10 +145,6 @@ export default class GameManager extends Component {
       tile.selectTile();
     } else {
       this.secondSelectedTile = tile;
-
-      console.log(
-        `tiles: ${this.firstSelectedTile.getTileType()} and ${this.secondSelectedTile.getTileType()}`
-      );
 
       const firstCoords = this.getTileCoords(this.firstSelectedTile);
       const secondCoords = this.getTileCoords(this.secondSelectedTile);
@@ -108,10 +161,6 @@ export default class GameManager extends Component {
         tile.selectTile();
         this.secondSelectedTile = undefined;
       }
-
-      console.log(
-        `tiles: ${this.firstSelectedTile.getTileType()} and ${this.secondSelectedTile?.getTileType()}`
-      );
     }
   }
 
@@ -121,13 +170,11 @@ export default class GameManager extends Component {
         (-GameConfig.GridWidth * GameConfig.TileWidth) / 2 +
         GameConfig.TileWidth / 2 +
         coords.x * GameConfig.TileWidth,
-      y:
-        // Invert y coordinate since game world coordinates are inverted (positive y is up)
-        -(
-          (-GameConfig.GridHeight * GameConfig.TileHeight) / 2 +
-          GameConfig.TileHeight / 2 +
-          coords.y * GameConfig.TileHeight
-        ),
+      y: -(
+        (-GameConfig.GridHeight * GameConfig.TileHeight) / 2 +
+        GameConfig.TileHeight / 2 +
+        coords.y * GameConfig.TileHeight
+      ),
     };
   }
 
@@ -153,15 +200,27 @@ export default class GameManager extends Component {
       this.tileGrid[secondSelectedTileCoords.y][secondSelectedTileCoords.x] =
         this.firstSelectedTile;
 
+      this.firstSelectedTile.node.setSiblingIndex(this.node.children.length);
+
       tween(this.firstSelectedTile.node)
         .to(
-          0.4,
+          0.2,
           {
             position: new Vec3(
               this.secondSelectedTile.node.x,
               this.secondSelectedTile.node.y,
               this.firstSelectedTile.node.position.z
             ),
+            scale: new Vec3(1.85, 1.85, 1.0),
+          },
+          {
+            easing: 'linear',
+          }
+        )
+        .to(
+          0.2,
+          {
+            scale: new Vec3(1.0, 1.0, 1.0),
           },
           {
             easing: 'linear',
@@ -192,9 +251,8 @@ export default class GameManager extends Component {
 
       this.secondSelectedTile =
         this.tileGrid[secondSelectedTileCoords.y][secondSelectedTileCoords.x];
-
-      if (this.firstSelectedTile) this.firstSelectedTile.changeState('idle');
-      if (this.secondSelectedTile) this.secondSelectedTile.changeState('idle');
+    } else {
+      this.canMove = true;
     }
   }
 
@@ -210,7 +268,6 @@ export default class GameManager extends Component {
     } else {
       this.swapTiles();
       this.tileUp();
-      this.canMove = true;
     }
   }
 
