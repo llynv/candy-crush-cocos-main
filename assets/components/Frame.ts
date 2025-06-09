@@ -26,49 +26,17 @@ export class Frame extends Component {
 
     this.isHovering = true;
 
-    const currentColor = this.sprite.color.clone();
-    const targetAlpha = this.hoverAlpha * 255;
-
-    tween(this.sprite)
-      .to(
-        this.tweenDuration,
-        {
-          color: currentColor.set(currentColor.r, currentColor.g, currentColor.b, targetAlpha),
-        },
-        {
-          easing: 'quadOut',
-        }
-      )
-      .start();
+    this.sprite.color = new Color(0, 0, 0, this.hoverAlpha * 255);
   }
 
-  /**
-   * Manually trigger mouse leave effect (called by tile above)
-   */
   public triggerMouseLeave(): void {
     if (!this.isHovering || !this.sprite) return;
 
     this.isHovering = false;
 
-    const currentColor = this.sprite.color.clone();
-    const targetAlpha = this.originalAlpha * 255;
-
-    tween(this.sprite)
-      .to(
-        this.tweenDuration,
-        {
-          color: currentColor.set(currentColor.r, currentColor.g, currentColor.b, targetAlpha),
-        },
-        {
-          easing: 'quadIn',
-        }
-      )
-      .start();
+    this.sprite.color = new Color(0, 0, 0, this.originalAlpha * 255);
   }
 
-  /**
-   * Manually trigger hover effect
-   */
   public setHoverState(hover: boolean): void {
     if (hover) {
       this.triggerMouseEnter();
@@ -77,9 +45,6 @@ export class Frame extends Component {
     }
   }
 
-  /**
-   * Set custom hover alpha value (0-1)
-   */
   public setHoverAlpha(alpha: number): void {
     this.hoverAlpha = Math.max(0, Math.min(1, alpha));
   }
