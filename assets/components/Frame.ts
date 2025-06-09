@@ -1,4 +1,14 @@
-import { _decorator, Component, Sprite, input, Input, EventMouse, tween, Color } from 'cc';
+import {
+  _decorator,
+  Component,
+  Sprite,
+  input,
+  Input,
+  EventMouse,
+  tween,
+  Color,
+  SpriteFrame,
+} from 'cc';
 
 const { ccclass, property } = _decorator;
 
@@ -7,7 +17,10 @@ export class Frame extends Component {
   @property(Sprite)
   private sprite: Sprite | null = null;
 
-  private originalAlpha: number = 0.5;
+  @property([SpriteFrame])
+  public spriteFrames: SpriteFrame[] = [];
+
+  private originalAlpha: number = 0.6;
   private hoverAlpha: number = 0.7;
   private isHovering: boolean = false;
   private tweenDuration: number = 0.15;
@@ -18,7 +31,25 @@ export class Frame extends Component {
 
   protected onLoad(): void {
     if (!this.sprite) throw new Error('Sprite is required for Frame');
-    this.sprite.color = new Color(0, 0, 0, this.originalAlpha * 255);
+    const currentColor = this.sprite.color.clone();
+    this.sprite.color = currentColor.set(
+      currentColor.r,
+      currentColor.g,
+      currentColor.b,
+      this.originalAlpha * 255
+    );
+  }
+
+  public setSpriteFrame(spriteIndex: number): void {
+    if (
+      !this.sprite ||
+      !this.spriteFrames ||
+      spriteIndex < 0 ||
+      spriteIndex >= this.spriteFrames.length
+    )
+      return;
+
+    this.sprite.spriteFrame = this.spriteFrames[spriteIndex];
   }
 
   public triggerMouseEnter(): void {
@@ -26,7 +57,13 @@ export class Frame extends Component {
 
     this.isHovering = true;
 
-    this.sprite.color = new Color(0, 0, 0, this.hoverAlpha * 255);
+    const currentColor = this.sprite.color.clone();
+    this.sprite.color = currentColor.set(
+      currentColor.r,
+      currentColor.g,
+      currentColor.b,
+      this.hoverAlpha * 255
+    );
   }
 
   public triggerMouseLeave(): void {
@@ -34,7 +71,13 @@ export class Frame extends Component {
 
     this.isHovering = false;
 
-    this.sprite.color = new Color(0, 0, 0, this.originalAlpha * 255);
+    const currentColor = this.sprite.color.clone();
+    this.sprite.color = currentColor.set(
+      currentColor.r,
+      currentColor.g,
+      currentColor.b,
+      this.originalAlpha * 255
+    );
   }
 
   public setHoverState(hover: boolean): void {
