@@ -115,7 +115,7 @@ export class Tile extends Component {
     if (!spriteFrame) throw new Error(`Sprite frame for ${tileType} not found`);
     this.sprite!.spriteFrame = spriteFrame;
     const uiTransform = this.sprite!.node.getComponent(UITransform);
-    uiTransform!.setContentSize(55, 55);
+    uiTransform!.setContentSize(50, 50);
   }
 
   public changeState(stateName: string): void {
