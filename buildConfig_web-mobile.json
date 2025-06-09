@@ -1,0 +1,80 @@
+{
+  "name": "candy-crush-cocos",
+  "server": "",
+  "engineModulesConfigKey": "defaultConfig",
+  "platform": "web-mobile",
+  "buildPath": "project://build",
+  "debug": false,
+  "buildMode": "normal",
+  "mangleProperties": false,
+  "md5Cache": false,
+  "skipCompressTexture": false,
+  "sourceMaps": "false",
+  "overwriteProjectSettings": {
+    "includeModules": {
+      "gfx-webgl2": "on",
+      "physics": "inherit-project-setting",
+      "physics-2d": "inherit-project-setting"
+    },
+    "macroConfig": {
+      "cleanupImageCache": "inherit-project-setting"
+    }
+  },
+  "nativeCodeBundleMode": "both",
+  "polyfills": {
+    "asyncFunctions": true
+  },
+  "experimentalEraseModules": false,
+  "startSceneAssetBundle": false,
+  "bundleConfigs": [],
+  "inlineEnum": true,
+  "useBuiltinServer": false,
+  "md5CacheOptions": {
+    "excludes": [],
+    "includes": [],
+    "replaceOnly": [],
+    "handleTemplateMd5Link": true
+  },
+  "mainBundleIsRemote": false,
+  "mainBundleCompressionType": "merge_dep",
+  "useSplashScreen": true,
+  "bundleCommonChunk": false,
+  "packAutoAtlas": true,
+  "startScene": "d01c35dd-a52d-4986-844b-fa9ef8976e51",
+  "outputName": "web-mobile",
+  "taskName": "web-mobile",
+  "scenes": [
+    {
+      "url": "db://assets/scenes/GameScene.scene",
+      "uuid": "60eced6b-949b-4a64-b2ee-bb47c3944a96"
+    },
+    {
+      "url": "db://assets/scenes/LoadScene.scene",
+      "uuid": "d01c35dd-a52d-4986-844b-fa9ef8976e51"
+    }
+  ],
+  "wasmCompressionMode": false,
+  "packages": {
+    "web-mobile": {
+      "useWebGPU": false,
+      "orientation": "auto",
+      "embedWebDebugger": false,
+      "__version__": "1.0.1"
+    },
+    "adsense-h5g-plugin": {
+      "enableAdsense": false,
+      "enableTestAd": false,
+      "__version__": "1.0.1",
+      "AFPHostPropertyCode": "ca-host-pub-5396158963872751",
+      "AFPHostDomain": "douyougame.com",
+      "otherAFPHostPropertyCode": "",
+      "otherAFPDomain": ""
+    },
+    "cocos-service": {
+      "configID": "278160",
+      "services": [],
+      "__version__": "3.0.9"
+    }
+  },
+  "__version__": "1.3.9"
+}
