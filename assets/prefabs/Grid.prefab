@@ -150,6 +150,16 @@
     "sprite": {
       "__id__": 4
     },
+    "spriteFrames": [
+      {
+        "__uuid__": "15b4c3aa-f68a-4d79-917b-5d2e1caf541a@f9941",
+        "__expectedType__": "cc.SpriteFrame"
+      },
+      {
+        "__uuid__": "4ecd667f-a4d7-4a69-a4f3-c4a777b7b9ec@f9941",
+        "__expectedType__": "cc.SpriteFrame"
+      }
+    ],
     "_id": ""
   },
   {
