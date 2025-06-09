@@ -2,7 +2,7 @@ const GameConfig = {
   GridWidth: 8,
   GridHeight: 8,
   TileWidth: 64,
-  TileHeight: 72,
+  TileHeight: 64,
   CandyTypes: [
     'cookie1',
     'cookie2',

@@ -324,6 +324,11 @@
       "__uuid__": "9b46d6b1-ad25-4436-bb7c-396f64eae86f",
       "__expectedType__": "cc.Prefab"
     },
+    "camera": null,
+    "framePrefab": {
+      "__uuid__": "dc5fb91c-fb31-4209-a13d-e165e92a221f",
+      "__expectedType__": "cc.Prefab"
+    },
     "_id": "62yKoROMlJI5fZ46/mTCWu"
   },
   {
