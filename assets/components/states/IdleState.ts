@@ -18,9 +18,7 @@ export class IdleState extends TileState {
 
   onExit(): void {}
 
-  onClick(): void {
-    this.tile.changeState('select');
-  }
+  onClick(): void {}
 
   onSelect(): void {}
   onDeselect(): void {}

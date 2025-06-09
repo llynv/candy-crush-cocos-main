@@ -14,6 +14,8 @@ import GameConfig from '../constants/GameConfig';
 import { TileState } from './states/TileState';
 import { IdleState } from './states/IdleState';
 import { SelectState } from './states/SelectState';
+import { Frame } from './Frame';
+import { GameGlobalData } from './GameGlobalData';
 
 const { ccclass, property } = _decorator;
 
@@ -28,6 +30,9 @@ export class Tile extends Component {
   private currentState: TileState | null = null;
   private states: Map<string, TileState> = new Map();
 
+  private isMouseDown: boolean = false;
+  private correspondingFrame: Frame | null = null;
+
   protected __preload(): void {
     if (!this.sprite) throw new Error('Sprite is required');
   }
@@ -38,8 +43,10 @@ export class Tile extends Component {
 
     this.changeState('idle');
 
-    this.node.on(Input.EventType.MOUSE_DOWN, this.onMouseDown, this);
-    this.node.on(Input.EventType.MOUSE_UP, this.onMouseUp, this);
+    this.node.on('mouse-down', this.onMouseDown, this);
+    this.node.on('mouse-enter', this.onMouseEnter, this);
+    this.node.on('mouse-leave', this.onMouseLeave, this);
+    this.node.on('mouse-up', this.onMouseUp, this);
   }
 
   public addOnClickCallback(callback: (tile: Tile) => void) {
@@ -59,7 +66,9 @@ export class Tile extends Component {
   }
 
   public removeOnMouseDownCallback(callback?: (tile: Tile) => void) {
-    this.callbacks = this.callbacks.filter(c => c !== callback);
+    if (callback) {
+      this.callbacks = this.callbacks.filter(c => c !== callback);
+    }
   }
 
   public addOnMouseUpCallback(callback: (tile: Tile) => void) {
@@ -67,7 +76,11 @@ export class Tile extends Component {
   }
 
   public removeOnMouseUpCallback(callback?: (tile: Tile) => void) {
-    this.callbacks = this.callbacks.filter(c => c !== callback);
+    if (callback) {
+      this.callbacks = this.callbacks.filter(c => c !== callback);
+    } else {
+      this.callbacks = [];
+    }
   }
 
   /**
@@ -137,10 +150,43 @@ export class Tile extends Component {
     return this.sprite;
   }
 
+  public setFrame(frame: Frame): void {
+    this.correspondingFrame = frame;
+  }
+
+  public getFrame(): Frame | null {
+    return this.correspondingFrame;
+  }
+
   private onMouseDown(event: EventMouse): void {
     this.currentState?.onMouseDown();
 
-    console.log('onMouseDown');
+    for (const callback of this.callbacks) {
+      callback(this);
+    }
+
+    GameGlobalData.getInstance().setIsMouseDown(true);
+  }
+
+  private onMouseEnter(event: EventMouse): void {
+    if (this.correspondingFrame) {
+      this.correspondingFrame.triggerMouseEnter();
+    }
+
+    if (!GameGlobalData.getInstance().getIsMouseDown()) return;
+    console.log('onMouseEnter');
+
+    for (const callback of this.callbacks) {
+      callback(this);
+    }
+  }
+
+  private onMouseLeave(event: EventMouse): void {
+    if (this.correspondingFrame) {
+      this.correspondingFrame.triggerMouseLeave();
+    }
+
+    if (!GameGlobalData.getInstance().getIsMouseDown()) return;
 
     for (const callback of this.callbacks) {
       callback(this);
@@ -153,14 +199,17 @@ export class Tile extends Component {
     for (const callback of this.callbacks) {
       callback(this);
     }
+
+    GameGlobalData.getInstance().setIsMouseDown(false);
   }
 
   protected onDestroy(): void {
     this.callbacks = [];
+    this.node.off('mouse-down', this.onMouseDown, this);
+    this.node.off('mouse-enter', this.onMouseEnter, this);
+    this.node.off('mouse-leave', this.onMouseLeave, this);
+    this.node.off('mouse-up', this.onMouseUp, this);
 
     this.currentState?.onExit();
-
-    this.node.off(Input.EventType.MOUSE_DOWN, this.onMouseDown, this);
-    this.node.off(Input.EventType.MOUSE_UP, this.onMouseUp, this);
   }
 }

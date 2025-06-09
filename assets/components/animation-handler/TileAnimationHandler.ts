@@ -53,17 +53,7 @@ export class TileAnimationHandler extends Component {
       this.selectionTween = null;
     }
 
-    tween(this.node)
-      .to(
-        CONFIG.DESELECTION_CONFIG.duration!,
-        {
-          scale: this.originalScale,
-        },
-        {
-          easing: CONFIG.DESELECTION_CONFIG.easing,
-        }
-      )
-      .start();
+    this.node.scale = this.originalScale;
   }
 
   /**

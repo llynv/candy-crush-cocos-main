@@ -11,30 +11,22 @@ export class SelectState extends TileState {
     this.animationHandler = tile.getComponent(TileAnimationHandler);
   }
 
-  onEnter(): void {
-    this.animationHandler?.animateSelection();
-  }
+  onEnter(): void {}
 
   onExit(): void {
     this.animationHandler?.animateDeselection();
-    this.animationHandler?.stopAllAnimations();
   }
 
-  onClick(): void {
+  onClick(): void {}
+
+  onSelect(): void {
     this.animationHandler?.animateSelection();
   }
-
-  onSelect(): void {}
 
   onDeselect(): void {
     this.animationHandler?.animateDeselection();
-    this.animationHandler?.stopAllAnimations();
   }
 
-  onMouseDown(): void {
-    this.animationHandler?.animateSelection();
-  }
-  onMouseUp(): void {
-    this.animationHandler?.animateSelection();
-  }
+  onMouseDown(): void {}
+  onMouseUp(): void {}
 }
