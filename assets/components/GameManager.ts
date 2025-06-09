@@ -86,6 +86,8 @@ export default class GameManager extends Component {
     const { x: xPos, y: yPos } = this.getTilePosition({ x, y });
     frameNode.setPosition(xPos, yPos);
 
+    frame.setSpriteFrame((x + y) % 2);
+
     this.node?.addChild(frameNode);
 
     frame.setTweenDuration(0.15);
@@ -301,74 +303,133 @@ export default class GameManager extends Component {
   }
 
   private resetTile(): void {
-    const fallDelayBase = 0.05;
-    let animationPromises: Promise<void>[] = [];
-    let anyTilesMoved = false;
-
-    let tilesToMove: Array<{ tile: Tile; fromY: number; toY: number; x: number }> = [];
+    const fallTasks: Array<{
+      tile: Tile;
+      fromY: number;
+      toY: number;
+      x: number;
+      isNewTile: boolean;
+    }> = [];
 
     for (let x = 0; x < GameConfig.GridWidth; x++) {
-      let writeIndex = GameConfig.GridHeight - 1;
+      const columnTiles: Array<{ tile: Tile; currentY: number }> = [];
 
       for (let y = GameConfig.GridHeight - 1; y >= 0; y--) {
         if (this.tileGrid[y][x] !== undefined) {
-          if (y !== writeIndex) {
-            tilesToMove.push({
-              tile: this.tileGrid[y][x]!,
-              fromY: y,
-              toY: writeIndex,
-              x: x,
-            });
-            anyTilesMoved = true;
-          }
-          writeIndex--;
+          columnTiles.push({
+            tile: this.tileGrid[y][x]!,
+            currentY: y,
+          });
         }
+      }
+
+      for (let y = 0; y < GameConfig.GridHeight; y++) {
+        this.tileGrid[y][x] = undefined;
+      }
+
+      for (let i = 0; i < columnTiles.length; i++) {
+        const tileData = columnTiles[i];
+        const targetY = GameConfig.GridHeight - 1 - i;
+
+        this.tileGrid[targetY][x] = tileData.tile;
+        this.tileCoords.set(tileData.tile, { x, y: targetY });
+        tileData.tile.setFrame(this.frameGrid[targetY][x]!);
+
+        if (tileData.currentY !== targetY) {
+          fallTasks.push({
+            tile: tileData.tile,
+            fromY: tileData.currentY,
+            toY: targetY,
+            x: x,
+            isNewTile: false,
+          });
+        }
+      }
+
+      for (let i = columnTiles.length; i < GameConfig.GridHeight; i++) {
+        const targetY = GameConfig.GridHeight - 1 - i;
+        const newTile = this.addTile(x, targetY);
+
+        this.tileGrid[targetY][x] = newTile;
+        this.tileCoords.set(newTile, { x, y: targetY });
+        newTile.setFrame(this.frameGrid[targetY][x]!);
+
+        fallTasks.push({
+          tile: newTile,
+          fromY: -1,
+          toY: targetY,
+          x: x,
+          isNewTile: true,
+        });
       }
     }
 
-    tilesToMove.forEach((moveData, index) => {
-      const { tile, fromY, toY, x } = moveData;
+    if (fallTasks.length === 0) {
+      setTimeout(() => {
+        this.checkMatches();
+      }, 100);
+      return;
+    }
 
-      this.tileGrid[fromY][x] = undefined;
-      this.tileGrid[toY][x] = tile;
+    fallTasks.forEach(task => {
+      const { tile, fromY, toY, x, isNewTile } = task;
+      const finalPosition = this.getTilePosition({ x, y: toY });
 
-      this.tileCoords.set(tile, { x, y: toY });
+      if (isNewTile) {
+        const spawnHeight = (GameConfig.GridHeight - toY + 1) * GameConfig.TileHeight;
+        const startY = finalPosition.y + spawnHeight;
+        tile.node.setPosition(finalPosition.x, startY, 0);
+        tile.node.setScale(0.8, 0.8, 1.0);
+      } else {
+        const currentPosition = this.getTilePosition({ x, y: fromY });
+        tile.node.setPosition(currentPosition.x, currentPosition.y, 0);
+      }
+    });
 
-      tile.setFrame(this.frameGrid[toY][x]!);
+    const fallDuration = 0.6;
+    const animationPromises: Promise<void>[] = [];
 
-      const { y: yPos } = this.getTilePosition({ x, y: toY });
-      const fallDelay = index * fallDelayBase;
-      const fallDistance = Math.abs(toY - fromY);
+    fallTasks.forEach(task => {
+      const { tile, toY, x, isNewTile } = task;
+      const finalPosition = this.getTilePosition({ x, y: toY });
 
       const animationPromise = new Promise<void>(resolve => {
-        tween(tile.node)
-          .delay(fallDelay)
-          .to(
-            0.3 + fallDistance * 0.05,
+        let tweenChain = tween(tile.node);
+
+        if (isNewTile) {
+          tweenChain = tweenChain.to(
+            0.1,
             {
-              position: new Vec3(tile.node.x, yPos, tile.node.position.z),
+              scale: new Vec3(1.0, 1.0, 1.0),
+            },
+            { easing: 'backOut' }
+          );
+        }
+
+        tweenChain
+          .to(
+            fallDuration,
+            {
+              position: new Vec3(finalPosition.x, finalPosition.y, 0),
             },
             {
               easing: 'quartIn',
             }
           )
+
           .to(
             0.1,
             {
               scale: new Vec3(1.05, 0.95, 1.0),
             },
-            {
-              easing: 'quadOut',
-            }
+            { easing: 'quadOut' }
           )
           .to(
             0.1,
             {
               scale: new Vec3(1.0, 1.0, 1.0),
             },
-            {
-              easing: 'backOut',
-            }
+            { easing: 'backOut' }
           )
           .call(() => {
             resolve();
@@ -379,90 +440,11 @@ export default class GameManager extends Component {
       animationPromises.push(animationPromise);
     });
 
-    if (anyTilesMoved) {
-      Promise.all(animationPromises).then(() => {
-        setTimeout(() => {
-          this.fillTile();
-        }, 0);
-      });
-    } else {
-      this.fillTile();
-    }
-  }
-
-  private fillTile(): void {
-    const spawnHeight = GameConfig.TileHeight * 2;
-    const fallDelayBase = 0.08;
-    let columnDelays: number[] = new Array(GameConfig.GridWidth).fill(0);
-
-    for (let x = 0; x < GameConfig.GridWidth; x++) {
-      for (let y = 0; y < GameConfig.GridHeight; y++) {
-        if (this.tileGrid[y][x] === undefined) {
-          const tile = this.addTile(x, y);
-          this.tileGrid[y][x] = tile;
-
-          this.tileCoords.set(tile, { x, y });
-
-          const finalPosition = this.getTilePosition({ x, y });
-
-          const spawnY = finalPosition.y + spawnHeight + columnDelays[x] * GameConfig.TileHeight;
-          tile.node.setPosition(finalPosition.x, spawnY, 0);
-
-          tile.node.setScale(0.5, 0.5, 1.0);
-
-          const fallDelay = columnDelays[x] * fallDelayBase;
-          columnDelays[x]++;
-
-          tween(tile.node)
-            .delay(fallDelay)
-
-            .to(
-              0.1,
-              {
-                scale: new Vec3(1.0, 1.0, 1.0),
-              },
-              { easing: 'backOut' }
-            )
-
-            .to(
-              0.4 + columnDelays[x] * 0.05,
-              {
-                position: new Vec3(finalPosition.x, finalPosition.y, 0),
-              },
-              {
-                easing: 'quartIn',
-              }
-            )
-
-            .to(
-              0.1,
-              {
-                scale: new Vec3(1.1, 0.9, 1.0),
-              },
-              { easing: 'quadOut' }
-            )
-            .to(
-              0.15,
-              {
-                scale: new Vec3(0.95, 1.05, 1.0),
-              },
-              { easing: 'quadInOut' }
-            )
-            .to(
-              0.1,
-              {
-                scale: new Vec3(1.0, 1.0, 1.0),
-              },
-              { easing: 'backOut' }
-            )
-            .start();
-        }
-      }
-    }
-
-    setTimeout(() => {
-      this.checkMatches();
-    }, 800);
+    Promise.all(animationPromises).then(() => {
+      setTimeout(() => {
+        this.checkMatches();
+      }, 200);
+    });
   }
 
   private tileUp(): void {
@@ -474,6 +456,7 @@ export default class GameManager extends Component {
   }
 
   private removeTileGroup(matches: Tile[][]): void {
+    let match = [];
     for (let i = 0; i < matches.length; i++) {
       const tempArr = matches[i];
 
@@ -487,6 +470,7 @@ export default class GameManager extends Component {
         const tileCoords = this.tileCoords.get(tile)!;
 
         if (tileCoords.x !== -1 && tileCoords.y !== -1) {
+          match.push(tile.getTileType());
           if (tile.node && tile.node.isValid) {
             tile.node.destroy();
           }
@@ -497,6 +481,8 @@ export default class GameManager extends Component {
         }
       }
     }
+
+    console.log('match', match);
   }
 
   private getMatches(tileGrid: (Tile | undefined)[][]): Tile[][] {
