@@ -4,14 +4,14 @@ import {
   resources,
   Sprite,
   SpriteFrame,
-  input,
-  Input,
-  EventTouch,
-  Animation,
   EventMouse,
   UITransform,
+  ParticleSystem2D,
+  Color,
+  instantiate,
+  Prefab,
 } from 'cc';
-import GameConfig from '../constants/GameConfig';
+import { GameConfig, TileType } from '../constants/GameConfig';
 import { TileState } from './states/TileState';
 import { IdleState } from './states/IdleState';
 import { SelectState } from './states/SelectState';
@@ -19,23 +19,25 @@ import { Frame } from './Frame';
 import { GameGlobalData } from './GameGlobalData';
 
 const { ccclass, property } = _decorator;
-
 @ccclass('Tile')
 export class Tile extends Component {
   @property(Sprite)
   private sprite: Sprite | null = null;
 
-  private tileType: string = GameConfig.CandyTypes[0];
+  @property(Prefab)
+  private particleEffect: Prefab | null = null;
+
+  private tileType: TileType = GameConfig.CandyTypes[0];
   private callbacks: Array<(tile: Tile) => void> = [];
 
   private currentState: TileState | null = null;
   private states: Map<string, TileState> = new Map();
 
-  private isMouseDown: boolean = false;
   private correspondingFrame: Frame | null = null;
 
   protected __preload(): void {
     if (!this.sprite) throw new Error('Sprite is required');
+    if (!this.particleEffect) throw new Error('Particle effect is required');
   }
 
   protected onLoad(): void {
@@ -104,13 +106,14 @@ export class Tile extends Component {
     }
   }
 
-  public getTileType(): string {
+  public getTileType(): TileType {
     return this.tileType;
   }
 
-  public setTileType(tileType: string) {
+  public setTileType(tileType: TileType) {
     this.tileType = tileType;
-    const spriteFrame = resources.get(`images/${this.tileType}/spriteFrame`, SpriteFrame);
+
+    const spriteFrame = resources.get(`images/${this.tileType.name}/spriteFrame`, SpriteFrame);
 
     if (!spriteFrame) throw new Error(`Sprite frame for ${tileType} not found`);
     this.sprite!.spriteFrame = spriteFrame;
@@ -161,6 +164,10 @@ export class Tile extends Component {
     return this.correspondingFrame;
   }
 
+  public onPlayerIdle(): void {
+    this.currentState?.onPlayerIdle();
+  }
+
   private onMouseDown(event: EventMouse): void {
     GameGlobalData.getInstance().setIsMouseDown(true);
 
@@ -200,6 +207,8 @@ export class Tile extends Component {
   }
 
   protected onDestroy(): void {
+    this.playParticleEffect();
+
     this.callbacks = [];
     this.node.off('mouse-down', this.onMouseDown, this);
     this.node.off('mouse-enter', this.onMouseEnter, this);
@@ -207,5 +216,25 @@ export class Tile extends Component {
     this.node.off('mouse-up', this.onMouseUp, this);
 
     this.currentState?.onExit();
+  }
+
+  private playParticleEffect(): void {
+    if (!this.particleEffect) {
+      console.warn('Particle effect prefab is not assigned');
+      return;
+    }
+
+    const particleNode = instantiate(this.particleEffect);
+    this.node.parent!.addChild(particleNode);
+    particleNode.setPosition(this.node.getPosition());
+
+    const particleSystem = particleNode.getComponent(ParticleSystem2D);
+    if (particleSystem) {
+      particleSystem.startColor = this.tileType.color;
+      particleSystem.startColorVar = new Color(0, 0, 0, 255);
+      particleSystem.endColor = this.tileType.color;
+      particleSystem.endColorVar = new Color(0, 0, 0, 255);
+      particleSystem.playOnLoad = true;
+    }
   }
 }
