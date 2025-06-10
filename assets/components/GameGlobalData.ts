@@ -1,4 +1,4 @@
-import { Singleton } from './patterns/singleton';
+import { Singleton } from './patterns/Singleton';
 
 /**
  * GameGlobalData class that manages global game data using the Singleton pattern.
