@@ -316,4 +316,14 @@ export class TileAnimationHandler extends Component {
       })
       .start();
   }
+
+  public animateDestroy(callback?: () => void): void {
+    tween(this.node)
+      .to(0.1, { scale: new Vec3(1.1, 1.1, 1.1) }, { easing: 'quadOut' })
+      .to(0.15, { scale: new Vec3(0, 0, 0) }, { easing: 'quadIn' })
+      .call(() => {
+        if (callback) callback();
+      })
+      .start();
+  }
 }

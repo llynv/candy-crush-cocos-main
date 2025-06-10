@@ -17,6 +17,7 @@ import { IdleState } from './states/IdleState';
 import { SelectState } from './states/SelectState';
 import { Frame } from './Frame';
 import { GameGlobalData } from './GameGlobalData';
+import { TileAnimationHandler } from './animation-handler/TileAnimationHandler';
 
 const { ccclass, property } = _decorator;
 @ccclass('Tile')
@@ -191,8 +192,6 @@ export class Tile extends Component {
   }
 
   protected onDestroy(): void {
-    this.playParticleEffect();
-
     this.callbacks = [];
     this.node.off('mouse-down', this.onMouseDown, this);
     this.node.off('mouse-enter', this.onMouseEnter, this);
@@ -202,7 +201,7 @@ export class Tile extends Component {
     this.currentState?.onExit();
   }
 
-  private playParticleEffect(): void {
+  public playParticleEffect(callback?: () => void): void {
     if (!this.particleEffect) {
       console.warn('Particle effect prefab is not assigned');
       return;
@@ -219,6 +218,13 @@ export class Tile extends Component {
       particleSystem.endColor = this.tileType.color;
       particleSystem.endColorVar = new Color(0, 0, 0, 255);
       particleSystem.playOnLoad = true;
+    }
+  }
+
+  public playDestroyAnimation(callback?: () => void): void {
+    const tileAnimationHandler = this.node.getComponent(TileAnimationHandler);
+    if (tileAnimationHandler) {
+      tileAnimationHandler.animateDestroy(callback);
     }
   }
 }

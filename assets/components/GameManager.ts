@@ -231,15 +231,17 @@ export default class GameManager extends Component {
         this.boardManager!.setTileAt(x, targetY, tileData.tile);
         tileData.tile.setFrame(frameGrid[targetY][x]!);
 
-        if (tileData.currentY !== targetY) {
-          fallTasks.push({
-            tile: tileData.tile,
-            fromY: tileData.currentY,
-            toY: targetY,
-            x: x,
-            isNewTile: false,
-          });
+        if (tileData.currentY === targetY) {
+          continue;
         }
+
+        fallTasks.push({
+          tile: tileData.tile,
+          fromY: tileData.currentY,
+          toY: targetY,
+          x: x,
+          isNewTile: false,
+        });
       }
 
       for (let i = columnTiles.length; i < GameConfig.GridHeight; i++) {
@@ -264,7 +266,7 @@ export default class GameManager extends Component {
     if (fallTasks.length === 0) {
       setTimeout(() => {
         this.checkMatches();
-      }, 100);
+      }, 0);
       return;
     }
 
@@ -272,7 +274,7 @@ export default class GameManager extends Component {
 
     setTimeout(() => {
       this.checkMatches();
-    }, 200);
+    }, 0);
   }
 
   private tileUp(): void {
@@ -289,7 +291,6 @@ export default class GameManager extends Component {
 
     for (let i = 0; i < matches.length; i++) {
       const tempArr = matches[i];
-
       for (let j = 0; j < tempArr.length; j++) {
         const tile = tempArr[j];
 
@@ -299,15 +300,17 @@ export default class GameManager extends Component {
 
         const coords = tileCoords.get(tile)!;
 
-        if (coords.x !== -1 && coords.y !== -1) {
-          match.push(tile.getTileType());
-          if (tile.node && tile.node.isValid) {
-            tile.node.destroy();
-          }
-
-          this.boardManager!.clearTileAt(coords.x, coords.y);
-          this.currentTilesQuantity--;
+        if (coords.x === -1 && coords.y === -1) {
+          continue;
         }
+
+        match.push(tile.getTileType());
+        tile.playDestroyAnimation(() => {
+          tile.playParticleEffect();
+          tile.node.destroy();
+        });
+        this.boardManager!.clearTileAt(coords.x, coords.y);
+        this.currentTilesQuantity--;
       }
     }
   }

@@ -77,15 +77,10 @@ export class InputManager extends Component {
   }
 
   public deselectAll(): void {
-    if (this.firstSelectedTile) {
-      this.firstSelectedTile.changeState('idle');
-      this.firstSelectedTile = undefined;
-    }
-
-    if (this.secondSelectedTile) {
-      this.secondSelectedTile.changeState('idle');
-      this.secondSelectedTile = undefined;
-    }
+    this.firstSelectedTile?.changeState('idle');
+    this.secondSelectedTile?.changeState('idle');
+    this.firstSelectedTile = undefined;
+    this.secondSelectedTile = undefined;
   }
 
   private selectFirstTile(tile: Tile): void {
