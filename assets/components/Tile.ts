@@ -91,16 +91,12 @@ export class Tile extends Component {
    * in the editor
    * */
   public emitOnMouseDown() {
-    this.currentState?.onMouseDown();
-
     for (const callback of this.callbacks) {
       callback(this);
     }
   }
 
   public emitOnMouseUp() {
-    this.currentState?.onMouseUp();
-
     for (const callback of this.callbacks) {
       callback(this);
     }
@@ -144,14 +140,6 @@ export class Tile extends Component {
     return 'unknown';
   }
 
-  public selectTile(): void {
-    this.currentState?.onSelect();
-  }
-
-  public deselectTile(): void {
-    this.currentState?.onDeselect();
-  }
-
   public getSprite(): Sprite | null {
     return this.sprite;
   }
@@ -170,8 +158,6 @@ export class Tile extends Component {
 
   private onMouseDown(event: EventMouse): void {
     GameGlobalData.getInstance().setIsMouseDown(true);
-
-    this.currentState?.onMouseDown();
 
     for (const callback of this.callbacks) {
       callback(this);
@@ -197,8 +183,6 @@ export class Tile extends Component {
   }
 
   private onMouseUp(event: EventMouse): void {
-    this.currentState?.onMouseUp();
-
     for (const callback of this.callbacks) {
       callback(this);
     }

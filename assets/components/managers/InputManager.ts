@@ -78,12 +78,12 @@ export class InputManager extends Component {
 
   public deselectAll(): void {
     if (this.firstSelectedTile) {
-      this.firstSelectedTile.deselectTile();
+      this.firstSelectedTile.changeState('idle');
       this.firstSelectedTile = undefined;
     }
 
     if (this.secondSelectedTile) {
-      this.secondSelectedTile.deselectTile();
+      this.secondSelectedTile.changeState('idle');
       this.secondSelectedTile = undefined;
     }
   }
@@ -91,7 +91,7 @@ export class InputManager extends Component {
   private selectFirstTile(tile: Tile): void {
     this.deselectAll();
     this.firstSelectedTile = tile;
-    tile.selectTile();
+    tile.changeState('select');
   }
 
   private areAdjacent(tile1: Tile, tile2: Tile): boolean {

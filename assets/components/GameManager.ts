@@ -96,7 +96,7 @@ export default class GameManager extends Component {
 
     if (!this.firstSelectedTile || this.firstSelectedTile === tile) {
       this.firstSelectedTile = tile;
-      tile.selectTile();
+      tile.changeState('select');
     } else {
       this.secondSelectedTile = tile;
 
@@ -111,9 +111,9 @@ export default class GameManager extends Component {
         this.canMove = false;
         this.swapTiles();
       } else {
-        this.firstSelectedTile.deselectTile();
+        this.firstSelectedTile.changeState('idle');
         this.firstSelectedTile = tile;
-        tile.selectTile();
+        tile.changeState('select');
         this.secondSelectedTile = undefined;
       }
     }
@@ -276,8 +276,8 @@ export default class GameManager extends Component {
   }
 
   private tileUp(): void {
-    if (this.firstSelectedTile) this.firstSelectedTile.deselectTile();
-    if (this.secondSelectedTile) this.secondSelectedTile.deselectTile();
+    if (this.firstSelectedTile) this.firstSelectedTile.changeState('idle');
+    if (this.secondSelectedTile) this.secondSelectedTile.changeState('idle');
 
     this.firstSelectedTile = undefined;
     this.secondSelectedTile = undefined;
