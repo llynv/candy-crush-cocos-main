@@ -4,32 +4,40 @@ import {
   resources,
   Sprite,
   SpriteFrame,
-  input,
-  Input,
-  EventTouch,
-  Animation,
   EventMouse,
+  UITransform,
+  ParticleSystem2D,
+  Color,
+  instantiate,
+  Prefab,
 } from 'cc';
-import GameConfig from '../constants/GameConfig';
+import { GameConfig, TileType } from '../constants/GameConfig';
 import { TileState } from './states/TileState';
 import { IdleState } from './states/IdleState';
 import { SelectState } from './states/SelectState';
+import { Frame } from './Frame';
+import { GameGlobalData } from './GameGlobalData';
 
 const { ccclass, property } = _decorator;
-
 @ccclass('Tile')
 export class Tile extends Component {
   @property(Sprite)
   private sprite: Sprite | null = null;
 
-  private tileType: string = GameConfig.CandyTypes[0];
+  @property(Prefab)
+  private particleEffect: Prefab | null = null;
+
+  private tileType: TileType = GameConfig.CandyTypes[0];
   private callbacks: Array<(tile: Tile) => void> = [];
 
   private currentState: TileState | null = null;
   private states: Map<string, TileState> = new Map();
 
+  private correspondingFrame: Frame | null = null;
+
   protected __preload(): void {
     if (!this.sprite) throw new Error('Sprite is required');
+    if (!this.particleEffect) throw new Error('Particle effect is required');
   }
 
   protected onLoad(): void {
@@ -38,8 +46,10 @@ export class Tile extends Component {
 
     this.changeState('idle');
 
-    this.node.on(Input.EventType.MOUSE_DOWN, this.onMouseDown, this);
-    this.node.on(Input.EventType.MOUSE_UP, this.onMouseUp, this);
+    this.node.on('mouse-down', this.onMouseDown, this);
+    this.node.on('mouse-enter', this.onMouseEnter, this);
+    this.node.on('mouse-leave', this.onMouseLeave, this);
+    this.node.on('mouse-up', this.onMouseUp, this);
   }
 
   public addOnClickCallback(callback: (tile: Tile) => void) {
@@ -59,7 +69,9 @@ export class Tile extends Component {
   }
 
   public removeOnMouseDownCallback(callback?: (tile: Tile) => void) {
-    this.callbacks = this.callbacks.filter(c => c !== callback);
+    if (callback) {
+      this.callbacks = this.callbacks.filter(c => c !== callback);
+    }
   }
 
   public addOnMouseUpCallback(callback: (tile: Tile) => void) {
@@ -67,7 +79,11 @@ export class Tile extends Component {
   }
 
   public removeOnMouseUpCallback(callback?: (tile: Tile) => void) {
-    this.callbacks = this.callbacks.filter(c => c !== callback);
+    if (callback) {
+      this.callbacks = this.callbacks.filter(c => c !== callback);
+    } else {
+      this.callbacks = [];
+    }
   }
 
   /**
@@ -75,31 +91,30 @@ export class Tile extends Component {
    * in the editor
    * */
   public emitOnMouseDown() {
-    this.currentState?.onMouseDown();
-
     for (const callback of this.callbacks) {
       callback(this);
     }
   }
 
   public emitOnMouseUp() {
-    this.currentState?.onMouseUp();
-
     for (const callback of this.callbacks) {
       callback(this);
     }
   }
 
-  public getTileType(): string {
+  public getTileType(): TileType {
     return this.tileType;
   }
 
-  public setTileType(tileType: string) {
+  public setTileType(tileType: TileType) {
     this.tileType = tileType;
-    const spriteFrame = resources.get(`images/${this.tileType}/spriteFrame`, SpriteFrame);
+
+    const spriteFrame = resources.get(`images/${this.tileType.name}/spriteFrame`, SpriteFrame);
 
     if (!spriteFrame) throw new Error(`Sprite frame for ${tileType} not found`);
     this.sprite!.spriteFrame = spriteFrame;
+    const uiTransform = this.sprite!.node.getComponent(UITransform);
+    uiTransform!.setContentSize(50, 50);
   }
 
   public changeState(stateName: string): void {
@@ -125,42 +140,85 @@ export class Tile extends Component {
     return 'unknown';
   }
 
-  public selectTile(): void {
-    this.currentState?.onSelect();
-  }
-
-  public deselectTile(): void {
-    this.currentState?.onDeselect();
-  }
-
   public getSprite(): Sprite | null {
     return this.sprite;
   }
 
-  private onMouseDown(event: EventMouse): void {
-    this.currentState?.onMouseDown();
+  public setFrame(frame: Frame): void {
+    this.correspondingFrame = frame;
+  }
 
-    console.log('onMouseDown');
+  public getFrame(): Frame | null {
+    return this.correspondingFrame;
+  }
+
+  public onPlayerIdle(): void {
+    this.currentState?.onPlayerIdle();
+  }
+
+  private onMouseDown(event: EventMouse): void {
+    GameGlobalData.getInstance().setIsMouseDown(true);
 
     for (const callback of this.callbacks) {
       callback(this);
+    }
+  }
+
+  private onMouseEnter(event: EventMouse): void {
+    if (this.correspondingFrame) {
+      this.correspondingFrame.triggerMouseEnter();
+    }
+
+    if (!GameGlobalData.getInstance().getIsMouseDown()) return;
+
+    for (const callback of this.callbacks) {
+      callback(this);
+    }
+  }
+
+  private onMouseLeave(event: EventMouse): void {
+    if (this.correspondingFrame) {
+      this.correspondingFrame.triggerMouseLeave();
     }
   }
 
   private onMouseUp(event: EventMouse): void {
-    this.currentState?.onMouseUp();
-
     for (const callback of this.callbacks) {
       callback(this);
     }
+
+    GameGlobalData.getInstance().setIsMouseDown(false);
   }
 
   protected onDestroy(): void {
+    this.playParticleEffect();
+
     this.callbacks = [];
+    this.node.off('mouse-down', this.onMouseDown, this);
+    this.node.off('mouse-enter', this.onMouseEnter, this);
+    this.node.off('mouse-leave', this.onMouseLeave, this);
+    this.node.off('mouse-up', this.onMouseUp, this);
 
     this.currentState?.onExit();
+  }
 
-    this.node.off(Input.EventType.MOUSE_DOWN, this.onMouseDown, this);
-    this.node.off(Input.EventType.MOUSE_UP, this.onMouseUp, this);
+  private playParticleEffect(): void {
+    if (!this.particleEffect) {
+      console.warn('Particle effect prefab is not assigned');
+      return;
+    }
+
+    const particleNode = instantiate(this.particleEffect);
+    this.node.parent!.addChild(particleNode);
+    particleNode.setPosition(this.node.getPosition());
+
+    const particleSystem = particleNode.getComponent(ParticleSystem2D);
+    if (particleSystem) {
+      particleSystem.startColor = this.tileType.color;
+      particleSystem.startColorVar = new Color(0, 0, 0, 255);
+      particleSystem.endColor = this.tileType.color;
+      particleSystem.endColorVar = new Color(0, 0, 0, 255);
+      particleSystem.playOnLoad = true;
+    }
   }
 }

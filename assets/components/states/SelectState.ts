@@ -17,24 +17,11 @@ export class SelectState extends TileState {
 
   onExit(): void {
     this.animationHandler?.animateDeselection();
-    this.animationHandler?.stopAllAnimations();
   }
 
-  onClick(): void {
-    this.animationHandler?.animateSelection();
-  }
+  onUpdate(): void {}
 
-  onSelect(): void {}
-
-  onDeselect(): void {
-    this.animationHandler?.animateDeselection();
-    this.animationHandler?.stopAllAnimations();
-  }
-
-  onMouseDown(): void {
-    this.animationHandler?.animateSelection();
-  }
-  onMouseUp(): void {
-    this.animationHandler?.animateSelection();
+  onPlayerIdle(): void {
+    this.animationHandler?.animatePlayerIdle();
   }
 }

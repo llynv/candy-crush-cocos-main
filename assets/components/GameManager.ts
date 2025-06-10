@@ -1,100 +1,108 @@
-import {
-  _decorator,
-  Component,
-  EventMouse,
-  Input,
-  instantiate,
-  Prefab,
-  tween,
-  Vec3,
-  type Node,
-  Camera,
-  UITransform,
-} from 'cc';
+import { _decorator, Component, Camera } from 'cc';
 const { ccclass, property } = _decorator;
-import GameConfig from '../constants/GameConfig';
+
+import { GameConfig } from '../constants/GameConfig';
 import { Tile } from './Tile';
+import { GameGlobalData } from './GameGlobalData';
+import { BoardManager } from './managers/BoardManager';
+import { MatchManager } from './managers/MatchManager';
+import { AnimationManager, FallTask } from './managers/AnimationManager';
+import { InputManager } from './managers/InputManager';
 
 @ccclass('GameManager')
 export default class GameManager extends Component {
-  private canMove = false;
-
-  private tileGrid: (Tile | undefined)[][] = [];
-
-  private firstSelectedTile: Tile | undefined = undefined;
-  private secondSelectedTile: Tile | undefined = undefined;
-
-  @property(Prefab)
-  private tilePrefab: Prefab | null = null;
-
   @property(Camera)
   private camera: Camera | null = null;
 
-  __preload(): void {
-    if (this.tilePrefab === null) throw new Error('Tile prefab is not set');
+  @property(BoardManager)
+  private boardManager: BoardManager | null = null;
+
+  @property(MatchManager)
+  private matchManager: MatchManager | null = null;
+
+  @property(AnimationManager)
+  private animationManager: AnimationManager | null = null;
+
+  @property(InputManager)
+  private inputManager: InputManager | null = null;
+
+  private playerIdleTime = 0;
+  private currentTilesQuantity = GameConfig.GridWidth * GameConfig.GridHeight;
+  private canMove = false;
+  private firstSelectedTile: Tile | undefined = undefined;
+  private secondSelectedTile: Tile | undefined = undefined;
+
+  protected __preload(): void {
+    if (!this.boardManager) throw new Error('BoardManager is required');
+    if (!this.matchManager) throw new Error('MatchManager is required');
+    if (!this.animationManager) throw new Error('AnimationManager is required');
+    if (!this.inputManager) throw new Error('InputManager is required');
   }
 
-  start(): void {
+  protected start(): void {
+    this.initializeManagers();
     this.createBoard();
   }
 
-  private createBoard() {
-    this.canMove = true;
-    this.tileGrid = [];
+  protected update(dt: number): void {
+    this.checkIdleTime(dt);
+  }
 
-    for (let y = 0; y < GameConfig.GridHeight; y++) {
-      this.tileGrid[y] = [];
-      for (let x = 0; x < GameConfig.GridWidth; x++) {
-        this.tileGrid[y][x] = this.addTile(x, y);
-      }
-    }
+  private initializeManagers(): void {
+    this.animationManager!.setBoardManager(this.boardManager!);
+  }
 
+  private createBoard(): void {
+    this.canMove = false;
+    GameGlobalData.getInstance().setIsMouseDown(true);
+    this.boardManager!.initializeBoard();
+    this.setupTileCallbacks();
     this.firstSelectedTile = undefined;
     this.secondSelectedTile = undefined;
-
     this.checkMatches();
   }
 
-  private addTile(x: number, y: number): Tile {
-    const randomTileType: string =
-      GameConfig.CandyTypes[Math.floor(Math.random() * GameConfig.CandyTypes.length)];
+  private setupTileCallbacks(): void {
+    const tileGrid = this.boardManager!.getTileGrid();
 
-    const node = instantiate(this.tilePrefab) as Node | null;
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+      for (let x = 0; x < GameConfig.GridWidth; x++) {
+        const tile = tileGrid[y][x];
+        if (tile) {
+          tile.addOnMouseDownCallback(this.tileDown.bind(this));
+          tile.addOnMouseUpCallback(this.tileDown.bind(this));
+        }
+      }
+    }
+  }
 
-    if (node === null) throw new Error('Failed to instantiate tile prefab');
+  private checkIdleTime(dt: number): void {
+    this.playerIdleTime += dt;
+    if (this.playerIdleTime > GameConfig.MaxIdleTime) {
+      this.makeTilesIdleAnimation();
+      this.playerIdleTime = 0;
+    }
+  }
 
-    const tile = node.getComponent(Tile) as Tile | null;
-
-    if (tile === null) throw new Error('Failed to get tile component');
-
-    this.node?.addChild(node);
-
-    tile.setTileType(randomTileType);
-
-    const { x: xPos, y: yPos } = this.getTilePosition({ x, y });
-    node.setPosition(xPos, yPos);
-
-    tile.addOnMouseDownCallback(tile => this.tileDown(tile));
-    tile.addOnMouseUpCallback(tile => this.tileDown(tile));
-
-    return tile;
+  private async makeTilesIdleAnimation(): Promise<void> {
+    const tileGrid = this.boardManager!.getTileGrid();
+    await this.animationManager!.animateIdleTiles(tileGrid);
   }
 
   private tileDown(tile: Tile): void {
     if (!this.canMove) return;
 
+    this.playerIdleTime = 0;
+
     if (!this.firstSelectedTile || this.firstSelectedTile === tile) {
       this.firstSelectedTile = tile;
-      tile.selectTile();
+      tile.changeState('select');
     } else {
       this.secondSelectedTile = tile;
 
-      console.log(
-        `tiles: ${this.firstSelectedTile.getTileType()} and ${this.secondSelectedTile.getTileType()}`
-      );
-
-      const firstCoords = this.getTileCoords(this.firstSelectedTile);
-      const secondCoords = this.getTileCoords(this.secondSelectedTile);
+      const tileCoords = this.boardManager!.getTileCoords();
+      const firstCoords = tileCoords.get(this.firstSelectedTile)!;
+      const secondCoords = tileCoords.get(this.secondSelectedTile)!;
 
       const dx = Math.abs(firstCoords.x - secondCoords.x);
       const dy = Math.abs(firstCoords.y - secondCoords.y);
@@ -103,255 +111,205 @@ export default class GameManager extends Component {
         this.canMove = false;
         this.swapTiles();
       } else {
-        this.firstSelectedTile.deselectTile();
+        this.firstSelectedTile.changeState('idle');
         this.firstSelectedTile = tile;
-        tile.selectTile();
+        tile.changeState('select');
         this.secondSelectedTile = undefined;
       }
-
-      console.log(
-        `tiles: ${this.firstSelectedTile.getTileType()} and ${this.secondSelectedTile?.getTileType()}`
-      );
     }
-  }
-
-  private getTilePosition(coords: { x: number; y: number }): { x: number; y: number } {
-    return {
-      x:
-        (-GameConfig.GridWidth * GameConfig.TileWidth) / 2 +
-        GameConfig.TileWidth / 2 +
-        coords.x * GameConfig.TileWidth,
-      y:
-        // Invert y coordinate since game world coordinates are inverted (positive y is up)
-        -(
-          (-GameConfig.GridHeight * GameConfig.TileHeight) / 2 +
-          GameConfig.TileHeight / 2 +
-          coords.y * GameConfig.TileHeight
-        ),
-    };
-  }
-
-  private getTileCoords(tile: Tile): { x: number; y: number } {
-    for (let y = 0; y < this.tileGrid.length; y++) {
-      for (let x = 0; x < this.tileGrid[y].length; x++) {
-        if (this.tileGrid[y][x] === tile) {
-          return { x, y };
-        }
-      }
-    }
-
-    throw new Error('Tile not found');
   }
 
   private swapTiles(): void {
-    if (this.firstSelectedTile && this.secondSelectedTile) {
-      const firstSelectedTileCoords = this.getTileCoords(this.firstSelectedTile);
-      const secondSelectedTileCoords = this.getTileCoords(this.secondSelectedTile);
-
-      this.tileGrid[firstSelectedTileCoords.y][firstSelectedTileCoords.x] = this.secondSelectedTile;
-
-      this.tileGrid[secondSelectedTileCoords.y][secondSelectedTileCoords.x] =
-        this.firstSelectedTile;
-
-      tween(this.firstSelectedTile.node)
-        .to(
-          0.4,
-          {
-            position: new Vec3(
-              this.secondSelectedTile.node.x,
-              this.secondSelectedTile.node.y,
-              this.firstSelectedTile.node.position.z
-            ),
-          },
-          {
-            easing: 'linear',
-          }
-        )
-        .start();
-
-      tween(this.secondSelectedTile.node)
-        .to(
-          0.4,
-          {
-            position: new Vec3(
-              this.firstSelectedTile.node.x,
-              this.firstSelectedTile.node.y,
-              this.secondSelectedTile.node.position.z
-            ),
-          },
-          {
-            easing: 'linear',
-          }
-        )
-        .call(() => {
-          this.checkMatches();
-        })
-        .start();
-
-      this.firstSelectedTile = this.tileGrid[firstSelectedTileCoords.y][firstSelectedTileCoords.x];
-
-      this.secondSelectedTile =
-        this.tileGrid[secondSelectedTileCoords.y][secondSelectedTileCoords.x];
-
-      if (this.firstSelectedTile) this.firstSelectedTile.changeState('idle');
-      if (this.secondSelectedTile) this.secondSelectedTile.changeState('idle');
+    if (!this.firstSelectedTile || !this.secondSelectedTile) {
+      this.canMove = true;
+      GameGlobalData.getInstance().setIsMouseDown(false);
+      return;
     }
+
+    if (!this.firstSelectedTile.node?.isValid || !this.secondSelectedTile.node?.isValid) {
+      console.error('Selected tiles are no longer valid');
+      this.tileUp();
+      this.canMove = true;
+      return;
+    }
+
+    const tileCoords = this.boardManager!.getTileCoords();
+    const tileGrid = this.boardManager!.getTileGrid();
+    const firstSelectedTileCoords = tileCoords.get(this.firstSelectedTile);
+    const secondSelectedTileCoords = tileCoords.get(this.secondSelectedTile);
+
+    tileGrid[firstSelectedTileCoords!.y][firstSelectedTileCoords!.x] = this.secondSelectedTile;
+    tileGrid[secondSelectedTileCoords!.y][secondSelectedTileCoords!.x] = this.firstSelectedTile;
+
+    tileCoords.set(this.secondSelectedTile, {
+      x: firstSelectedTileCoords!.x,
+      y: firstSelectedTileCoords!.y,
+    });
+    tileCoords.set(this.firstSelectedTile, {
+      x: secondSelectedTileCoords!.x,
+      y: secondSelectedTileCoords!.y,
+    });
+
+    this.animationManager!.animateSwap(this.firstSelectedTile, this.secondSelectedTile, () => {
+      this.checkMatches(true);
+    });
+
+    this.firstSelectedTile = tileGrid[firstSelectedTileCoords!.y][firstSelectedTileCoords!.x];
+    this.secondSelectedTile = tileGrid[secondSelectedTileCoords!.y][secondSelectedTileCoords!.x];
+
+    if (!this.firstSelectedTile || !this.secondSelectedTile) return;
+
+    tileCoords.set(this.firstSelectedTile, {
+      x: firstSelectedTileCoords!.x,
+      y: firstSelectedTileCoords!.y,
+    });
+    tileCoords.set(this.secondSelectedTile, {
+      x: secondSelectedTileCoords!.x,
+      y: secondSelectedTileCoords!.y,
+    });
   }
 
-  private checkMatches(): void {
-    const matches = this.getMatches(this.tileGrid);
+  private checkMatches(isSwapCheck: boolean = false): void {
+    const tileGrid = this.boardManager!.getTileGrid();
+    const matches = this.matchManager!.findMatches(tileGrid);
 
     if (matches.length > 0) {
       this.removeTileGroup(matches);
+      this.tileUp();
       this.resetTile();
-      this.fillTile();
-      this.tileUp();
-      this.checkMatches();
     } else {
-      this.swapTiles();
+      if (isSwapCheck) {
+        this.swapTiles();
+      } else {
+        this.canMove = true;
+        GameGlobalData.getInstance().setIsMouseDown(false);
+        this.resetFrames();
+      }
       this.tileUp();
-      this.canMove = true;
     }
   }
 
-  private resetTile(): void {
-    for (let x = GameConfig.GridWidth - 1; x >= 0; x--) {
-      for (let y = GameConfig.GridHeight - 1; y > 0; y--) {
-        if (this.tileGrid[y][x] === undefined && this.tileGrid[y - 1][x] !== undefined) {
-          const tempTile = this.tileGrid[y - 1][x]!;
-          this.tileGrid[y][x] = tempTile;
-          this.tileGrid[y - 1][x] = undefined;
+  private resetFrames(): void {
+    const tileGrid = this.boardManager!.getTileGrid();
+    const frameGrid = this.boardManager!.getFrameGrid();
 
-          const { y: yPos } = this.getTilePosition({ x, y });
-
-          tween(tempTile.node)
-            .to(
-              0.2,
-              {
-                position: new Vec3(tempTile.node.x, yPos, tempTile.node.position.z),
-              },
-              {
-                easing: 'linear',
-              }
-            )
-            .start();
-
-          y = GameConfig.GridHeight;
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+      for (let x = 0; x < GameConfig.GridWidth; x++) {
+        if (tileGrid[y][x] && frameGrid[y][x]) {
+          tileGrid[y][x]!.setFrame(frameGrid[y][x]!);
         }
       }
     }
   }
 
-  private fillTile(): void {
-    for (let y = 0; y < this.tileGrid.length; y++) {
-      for (let x = 0; x < this.tileGrid[y].length; x++) {
-        if (this.tileGrid[y][x] === undefined) {
-          const tile = this.addTile(x, y);
-          this.tileGrid[y][x] = tile;
+  private async resetTile(): Promise<void> {
+    const fallTasks: FallTask[] = [];
+    const tileGrid = this.boardManager!.getTileGrid();
+    const frameGrid = this.boardManager!.getFrameGrid();
+    const tileCoords = this.boardManager!.getTileCoords();
+
+    for (let x = 0; x < GameConfig.GridWidth; x++) {
+      const columnTiles: Array<{ tile: Tile; currentY: number }> = [];
+
+      for (let y = GameConfig.GridHeight - 1; y >= 0; y--) {
+        if (tileGrid[y][x] !== undefined) {
+          columnTiles.push({
+            tile: tileGrid[y][x]!,
+            currentY: y,
+          });
         }
       }
+
+      for (let y = 0; y < GameConfig.GridHeight; y++) {
+        this.boardManager!.setTileAt(x, y, undefined);
+      }
+
+      for (let i = 0; i < columnTiles.length; i++) {
+        const tileData = columnTiles[i];
+        const targetY = GameConfig.GridHeight - 1 - i;
+
+        this.boardManager!.setTileAt(x, targetY, tileData.tile);
+        tileData.tile.setFrame(frameGrid[targetY][x]!);
+
+        if (tileData.currentY !== targetY) {
+          fallTasks.push({
+            tile: tileData.tile,
+            fromY: tileData.currentY,
+            toY: targetY,
+            x: x,
+            isNewTile: false,
+          });
+        }
+      }
+
+      for (let i = columnTiles.length; i < GameConfig.GridHeight; i++) {
+        const targetY = GameConfig.GridHeight - 1 - i;
+        const newTile = this.boardManager!.createTileAt(x, targetY);
+
+        newTile.addOnMouseDownCallback(this.tileDown.bind(this));
+        newTile.addOnMouseUpCallback(this.tileDown.bind(this));
+
+        newTile.setFrame(frameGrid[targetY][x]!);
+
+        fallTasks.push({
+          tile: newTile,
+          fromY: -1,
+          toY: targetY,
+          x: x,
+          isNewTile: true,
+        });
+      }
     }
+
+    if (fallTasks.length === 0) {
+      setTimeout(() => {
+        this.checkMatches();
+      }, 100);
+      return;
+    }
+
+    await this.animationManager!.animateFall(fallTasks);
+
+    setTimeout(() => {
+      this.checkMatches();
+    }, 200);
   }
 
   private tileUp(): void {
-    if (this.firstSelectedTile) this.firstSelectedTile.deselectTile();
-    if (this.secondSelectedTile) this.secondSelectedTile.deselectTile();
+    if (this.firstSelectedTile) this.firstSelectedTile.changeState('idle');
+    if (this.secondSelectedTile) this.secondSelectedTile.changeState('idle');
 
     this.firstSelectedTile = undefined;
     this.secondSelectedTile = undefined;
   }
 
   private removeTileGroup(matches: Tile[][]): void {
+    const tileCoords = this.boardManager!.getTileCoords();
+    let match = [];
+
     for (let i = 0; i < matches.length; i++) {
       const tempArr = matches[i];
 
       for (let j = 0; j < tempArr.length; j++) {
         const tile = tempArr[j];
-        const tileCoords = this.getTileCoords(tile);
 
-        if (tileCoords.x !== -1 && tileCoords.y !== -1) {
-          tile.node.destroy();
-          this.tileGrid[tileCoords.y][tileCoords.x] = undefined;
+        if (!tile || !tileCoords.has(tile)) {
+          continue;
+        }
+
+        const coords = tileCoords.get(tile)!;
+
+        if (coords.x !== -1 && coords.y !== -1) {
+          match.push(tile.getTileType());
+          if (tile.node && tile.node.isValid) {
+            tile.node.destroy();
+          }
+
+          this.boardManager!.clearTileAt(coords.x, coords.y);
+          this.currentTilesQuantity--;
         }
       }
     }
-  }
-
-  private getMatches(tileGrid: (Tile | undefined)[][]): Tile[][] {
-    let matches: Tile[][] = [];
-    let groups: Tile[] = [];
-
-    for (let y = 0; y < tileGrid.length; y++) {
-      let tempArray = tileGrid[y];
-      groups = [];
-      for (let x = 0; x < tempArray.length; x++) {
-        if (x < tempArray.length - 2) {
-          if (tileGrid[y][x] && tileGrid[y][x + 1] && tileGrid[y][x + 2]) {
-            if (
-              tileGrid[y][x]!.getTileType() === tileGrid[y][x + 1]!.getTileType() &&
-              tileGrid[y][x + 1]!.getTileType() === tileGrid[y][x + 2]!.getTileType()
-            ) {
-              if (groups.length > 0) {
-                if (groups.indexOf(tileGrid[y][x]!) === -1) {
-                  matches.push(groups);
-                  groups = [];
-                }
-              }
-
-              if (groups.indexOf(tileGrid[y][x]!) === -1) {
-                groups.push(tileGrid[y][x]!);
-              }
-
-              if (groups.indexOf(tileGrid[y][x + 1]!) === -1) {
-                groups.push(tileGrid[y][x + 1]!);
-              }
-
-              if (groups.indexOf(tileGrid[y][x + 2]!) === -1) {
-                groups.push(tileGrid[y][x + 2]!);
-              }
-            }
-          }
-        }
-      }
-
-      if (groups.length > 0) {
-        matches.push(groups);
-      }
-    }
-
-    for (let j = 0; j < tileGrid.length; j++) {
-      const tempArr = tileGrid[j];
-      groups = [];
-      for (let i = 0; i < tempArr.length; i++) {
-        if (i < tempArr.length - 2)
-          if (tileGrid[i][j] && tileGrid[i + 1][j] && tileGrid[i + 2][j]) {
-            if (
-              tileGrid[i][j]!.getTileType() === tileGrid[i + 1][j]!.getTileType() &&
-              tileGrid[i + 1][j]!.getTileType() === tileGrid[i + 2][j]!.getTileType()
-            ) {
-              if (groups.length > 0) {
-                if (groups.indexOf(tileGrid[i][j]!) === -1) {
-                  matches.push(groups);
-                  groups = [];
-                }
-              }
-
-              if (groups.indexOf(tileGrid[i][j]!) === -1) {
-                groups.push(tileGrid[i][j]!);
-              }
-              if (groups.indexOf(tileGrid[i + 1][j]!) === -1) {
-                groups.push(tileGrid[i + 1][j]!);
-              }
-              if (groups.indexOf(tileGrid[i + 2][j]!) === -1) {
-                groups.push(tileGrid[i + 2][j]!);
-              }
-            }
-          }
-      }
-      if (groups.length > 0) matches.push(groups);
-    }
-
-    return matches;
   }
 
   protected onDestroy(): void {}

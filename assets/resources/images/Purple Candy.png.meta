@@ -1,0 +1,134 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "45b558a8-a42e-4257-bf75-eb8634a38aa1",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "45b558a8-a42e-4257-bf75-eb8634a38aa1@6c48a",
+      "displayName": "Purple Candy",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "imageUuidOrDatabaseUri": "45b558a8-a42e-4257-bf75-eb8634a38aa1",
+        "isUuid": true,
+        "visible": false,
+        "minfilter": "nearest",
+        "magfilter": "nearest",
+        "mipfilter": "none",
+        "anisotropy": 0
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "45b558a8-a42e-4257-bf75-eb8634a38aa1@f9941",
+      "displayName": "Purple Candy",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": 0,
+        "offsetY": 0,
+        "trimX": 29,
+        "trimY": 30,
+        "width": 454,
+        "height": 452,
+        "rawWidth": 512,
+        "rawHeight": 512,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": true,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -227,
+            -226,
+            0,
+            227,
+            -226,
+            0,
+            -227,
+            226,
+            0,
+            227,
+            226,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            29,
+            482,
+            483,
+            482,
+            29,
+            30,
+            483,
+            30
+          ],
+          "nuv": [
+            0.056640625,
+            0.05859375,
+            0.943359375,
+            0.05859375,
+            0.056640625,
+            0.94140625,
+            0.943359375,
+            0.94140625
+          ],
+          "minPos": [
+            -227,
+            -226,
+            0
+          ],
+          "maxPos": [
+            227,
+            226,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "45b558a8-a42e-4257-bf75-eb8634a38aa1@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "hasAlpha": true,
+    "fixAlphaTransparencyArtifacts": false,
+    "redirect": "45b558a8-a42e-4257-bf75-eb8634a38aa1@6c48a"
+  }
+}
