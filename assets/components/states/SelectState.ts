@@ -30,6 +30,6 @@ export class SelectState extends TileState {
   onMouseDown(): void {}
   onMouseUp(): void {}
   onPlayerIdle(): void {
-    this.animationHandler?.animateIdle();
+    this.animationHandler?.animatePlayerIdle();
   }
 }

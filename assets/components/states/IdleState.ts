@@ -31,6 +31,6 @@ export class IdleState extends TileState {
   }
 
   onPlayerIdle(): void {
-    this.animationHandler?.animateIdle();
+    this.animationHandler?.animatePlayerIdle();
   }
 }

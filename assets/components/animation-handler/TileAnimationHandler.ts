@@ -31,6 +31,8 @@ export class TileAnimationHandler extends Component {
   public animateSelection(): void {
     if (this.isAnimating) return;
 
+    this.stopAllAnimations();
+
     this.isAnimating = true;
     const scaledUp = this.originalScale.clone().multiplyScalar(1.2);
 
@@ -264,6 +266,8 @@ export class TileAnimationHandler extends Component {
    * Stop all animations and reset to original state
    */
   public stopAllAnimations(): void {
+    if (!this.isAnimating) return;
+
     tween(this.node).stop();
     if (this.tile?.getSprite()) {
       tween(this.tile.getSprite()!).stop();
@@ -297,5 +301,19 @@ export class TileAnimationHandler extends Component {
     if (this.tile?.getSprite()) {
       this.originalColor.set(this.tile.getSprite()!.color);
     }
+  }
+
+  public animatePlayerIdle(): void {
+    if (this.isAnimating) return;
+    this.isAnimating = true;
+
+    tween(this.node)
+      .to(0.4, { scale: new Vec3(1.15, 1.15, 1.15) }, { easing: 'sineOut' })
+      .to(0.4, { scale: new Vec3(1, 1, 1) }, { easing: 'sineIn' })
+      .union()
+      .call(() => {
+        this.isAnimating = false;
+      })
+      .start();
   }
 }
