@@ -226,6 +226,14 @@
     "sprite": {
       "__id__": 4
     },
+    "particleEffect": {
+      "__uuid__": "7d72a0dc-51f5-4cb3-bd66-45e0a7116ca9",
+      "__expectedType__": "cc.Prefab"
+    },
+    "debugLabelPrefab": {
+      "__uuid__": "bd3512f8-f062-4cdd-b37c-7700b8fd1c56",
+      "__expectedType__": "cc.Prefab"
+    },
     "_id": ""
   },
   {
