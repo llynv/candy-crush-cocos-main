@@ -29,4 +29,8 @@ export class IdleState extends TileState {
   onMouseUp(): void {
     this.tile.changeState('select');
   }
+
+  onPlayerIdle(): void {
+    this.animationHandler?.animateIdle();
+  }
 }
