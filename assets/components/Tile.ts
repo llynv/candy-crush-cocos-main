@@ -119,6 +119,16 @@ export class Tile extends Component {
   }
 
   public changeState(stateName: string): void {
+    console.log('changeState', stateName);
+
+    // Safety check: ensure states map exists and is not null
+    if (!this.states) {
+      console.warn('Tile states not initialized or tile has been destroyed');
+      return;
+    }
+
+    if (!this.states.has(stateName)) return;
+
     const newState = this.states.get(stateName);
     if (!newState) {
       console.error(`State ${stateName} not found`);
@@ -219,6 +229,8 @@ export class Tile extends Component {
       particleSystem.endColorVar = new Color(0, 0, 0, 255);
       particleSystem.playOnLoad = true;
     }
+
+    callback?.();
   }
 
   public playDestroyAnimation(callback?: () => void): void {

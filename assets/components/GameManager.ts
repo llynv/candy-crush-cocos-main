@@ -59,7 +59,10 @@ export default class GameManager extends Component {
     this.setupTileCallbacks();
     this.firstSelectedTile = undefined;
     this.secondSelectedTile = undefined;
-    this.checkMatches();
+
+    this.checkMatches().then(() => {
+      this.resetTile();
+    });
   }
 
   private setupTileCallbacks(): void {
@@ -135,48 +138,75 @@ export default class GameManager extends Component {
 
     const tileCoords = this.boardManager!.getTileCoords();
     const tileGrid = this.boardManager!.getTileGrid();
+
     const firstSelectedTileCoords = tileCoords.get(this.firstSelectedTile);
     const secondSelectedTileCoords = tileCoords.get(this.secondSelectedTile);
 
-    tileGrid[firstSelectedTileCoords!.y][firstSelectedTileCoords!.x] = this.secondSelectedTile;
-    tileGrid[secondSelectedTileCoords!.y][secondSelectedTileCoords!.x] = this.firstSelectedTile;
+    if (!firstSelectedTileCoords || !secondSelectedTileCoords) {
+      console.error('Selected tile coordinates not found - tiles may have been destroyed');
+      this.tileUp();
+      this.canMove = true;
+      GameGlobalData.getInstance().setIsMouseDown(false);
+      return;
+    }
+
+    if (
+      firstSelectedTileCoords.y < 0 ||
+      firstSelectedTileCoords.y >= GameConfig.GridHeight ||
+      firstSelectedTileCoords.x < 0 ||
+      firstSelectedTileCoords.x >= GameConfig.GridWidth ||
+      secondSelectedTileCoords.y < 0 ||
+      secondSelectedTileCoords.y >= GameConfig.GridHeight ||
+      secondSelectedTileCoords.x < 0 ||
+      secondSelectedTileCoords.x >= GameConfig.GridWidth
+    ) {
+      console.error('Selected tile coordinates are out of bounds');
+      this.tileUp();
+      this.canMove = true;
+      GameGlobalData.getInstance().setIsMouseDown(false);
+      return;
+    }
+
+    tileGrid[firstSelectedTileCoords.y][firstSelectedTileCoords.x] = this.secondSelectedTile;
+    tileGrid[secondSelectedTileCoords.y][secondSelectedTileCoords.x] = this.firstSelectedTile;
 
     tileCoords.set(this.secondSelectedTile, {
-      x: firstSelectedTileCoords!.x,
-      y: firstSelectedTileCoords!.y,
+      x: firstSelectedTileCoords.x,
+      y: firstSelectedTileCoords.y,
     });
     tileCoords.set(this.firstSelectedTile, {
-      x: secondSelectedTileCoords!.x,
-      y: secondSelectedTileCoords!.y,
+      x: secondSelectedTileCoords.x,
+      y: secondSelectedTileCoords.y,
     });
 
-    this.animationManager!.animateSwap(this.firstSelectedTile, this.secondSelectedTile, () => {
-      this.checkMatches(true);
-    });
+    this.animationManager!.animateSwap(this.firstSelectedTile, this.secondSelectedTile, () =>
+      this.checkMatches(true)
+    );
 
-    this.firstSelectedTile = tileGrid[firstSelectedTileCoords!.y][firstSelectedTileCoords!.x];
-    this.secondSelectedTile = tileGrid[secondSelectedTileCoords!.y][secondSelectedTileCoords!.x];
+    this.firstSelectedTile = tileGrid[firstSelectedTileCoords.y][firstSelectedTileCoords.x];
+    this.secondSelectedTile = tileGrid[secondSelectedTileCoords.y][secondSelectedTileCoords.x];
 
     if (!this.firstSelectedTile || !this.secondSelectedTile) return;
 
     tileCoords.set(this.firstSelectedTile, {
-      x: firstSelectedTileCoords!.x,
-      y: firstSelectedTileCoords!.y,
+      x: firstSelectedTileCoords.x,
+      y: firstSelectedTileCoords.y,
     });
     tileCoords.set(this.secondSelectedTile, {
-      x: secondSelectedTileCoords!.x,
-      y: secondSelectedTileCoords!.y,
+      x: secondSelectedTileCoords.x,
+      y: secondSelectedTileCoords.y,
     });
   }
 
-  private checkMatches(isSwapCheck: boolean = false): void {
+  private async checkMatches(isSwapCheck: boolean = false): Promise<void> {
     const tileGrid = this.boardManager!.getTileGrid();
     const matches = this.matchManager!.findMatches(tileGrid);
 
     if (matches.length > 0) {
-      this.removeTileGroup(matches);
-      this.tileUp();
-      this.resetTile();
+      this.removeTileGroup(matches).then(async () => {
+        this.tileUp();
+        await this.resetTile();
+      });
     } else {
       if (isSwapCheck) {
         this.swapTiles();
@@ -278,41 +308,78 @@ export default class GameManager extends Component {
   }
 
   private tileUp(): void {
-    if (this.firstSelectedTile) this.firstSelectedTile.changeState('idle');
-    if (this.secondSelectedTile) this.secondSelectedTile.changeState('idle');
+    this.firstSelectedTile?.changeState('idle');
+    this.secondSelectedTile?.changeState('idle');
 
     this.firstSelectedTile = undefined;
     this.secondSelectedTile = undefined;
   }
 
-  private removeTileGroup(matches: Tile[][]): void {
-    const tileCoords = this.boardManager!.getTileCoords();
-    let match = [];
+  private removeTileGroup(matches: Tile[][]): Promise<void> {
+    return new Promise<void>(resolve => {
+      const tileCoords = this.boardManager!.getTileCoords();
+      let match = [];
+      let totalTilesToDestroy = 0;
+      let tilesDestroyed = 0;
 
-    for (let i = 0; i < matches.length; i++) {
-      const tempArr = matches[i];
-      for (let j = 0; j < tempArr.length; j++) {
-        const tile = tempArr[j];
+      for (let i = 0; i < matches.length; i++) {
+        const tempArr = matches[i];
 
-        if (!tile || !tileCoords.has(tile)) {
-          continue;
+        for (let j = 0; j < tempArr.length; j++) {
+          const tile = tempArr[j];
+
+          if (!tile || !tileCoords.has(tile)) {
+            continue;
+          }
+
+          const coords = tileCoords.get(tile)!;
+
+          if (coords.x !== -1 && coords.y !== -1) {
+            match.push(tile.getTileType());
+            totalTilesToDestroy++;
+          }
         }
-
-        const coords = tileCoords.get(tile)!;
-
-        if (coords.x === -1 && coords.y === -1) {
-          continue;
-        }
-
-        match.push(tile.getTileType());
-        tile.playDestroyAnimation(() => {
-          tile.playParticleEffect();
-          tile.node.destroy();
-        });
-        this.boardManager!.clearTileAt(coords.x, coords.y);
-        this.currentTilesQuantity--;
       }
-    }
+
+      console.log('match', match);
+
+      if (totalTilesToDestroy === 0) {
+        resolve();
+        return;
+      }
+
+      const onTileDestroyed = () => {
+        tilesDestroyed++;
+        if (tilesDestroyed >= totalTilesToDestroy) {
+          resolve();
+        }
+      };
+
+      for (let i = 0; i < matches.length; i++) {
+        const tempArr = matches[i];
+
+        for (let j = 0; j < tempArr.length; j++) {
+          const tile = tempArr[j];
+
+          if (!tile || !tileCoords.has(tile)) {
+            continue;
+          }
+
+          const coords = tileCoords.get(tile)!;
+
+          if (coords.x !== -1 && coords.y !== -1) {
+            tile.playDestroyAnimation(() => {
+              tile.playParticleEffect(() => {
+                tile.node.destroy();
+                onTileDestroyed();
+              });
+            });
+
+            this.boardManager!.clearTileAt(coords.x, coords.y);
+          }
+        }
+      }
+    });
   }
 
   protected onDestroy(): void {}

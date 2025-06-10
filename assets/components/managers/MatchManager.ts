@@ -1,85 +1,117 @@
 import { _decorator, Component } from 'cc';
 import { Tile } from '../Tile';
+import { GameConfig } from '../../constants/GameConfig';
 
 const { ccclass } = _decorator;
 
 @ccclass('MatchManager')
 export class MatchManager extends Component {
   public findMatches(tileGrid: (Tile | undefined)[][]): Tile[][] {
-    let matches: Tile[][] = [];
-    let groups: Tile[] = [];
+    const allMatchedTiles = new Set<Tile>();
+    const matches: Tile[][] = [];
 
     for (let y = 0; y < tileGrid.length; y++) {
-      let tempArray = tileGrid[y];
-      groups = [];
-      for (let x = 0; x < tempArray.length; x++) {
-        if (x < tempArray.length - 2) {
-          if (tileGrid[y][x] && tileGrid[y][x + 1] && tileGrid[y][x + 2]) {
-            if (
-              tileGrid[y][x]!.getTileType() === tileGrid[y][x + 1]!.getTileType() &&
-              tileGrid[y][x + 1]!.getTileType() === tileGrid[y][x + 2]!.getTileType()
-            ) {
-              if (groups.length > 0) {
-                if (groups.indexOf(tileGrid[y][x]!) === -1) {
-                  matches.push(groups);
-                  groups = [];
-                }
-              }
+      for (let x = 0; x < tileGrid[y].length - 2; x++) {
+        const horizontalMatch = this.getHorizontalMatch(tileGrid, x, y);
+        if (horizontalMatch.length >= 3) {
+          const hasNewTiles = horizontalMatch.some(tile => !allMatchedTiles.has(tile));
+          if (hasNewTiles) {
+            matches.push(horizontalMatch);
+            horizontalMatch.forEach(tile => allMatchedTiles.add(tile));
+          }
+        }
+      }
+    }
 
-              if (groups.indexOf(tileGrid[y][x]!) === -1) {
-                groups.push(tileGrid[y][x]!);
-              }
+    for (let x = 0; x < tileGrid[0].length; x++) {
+      for (let y = 0; y < tileGrid.length - 2; y++) {
+        const verticalMatch = this.getVerticalMatch(tileGrid, x, y);
+        if (verticalMatch.length >= 3) {
+          const hasNewTiles = verticalMatch.some(tile => !allMatchedTiles.has(tile));
+          if (hasNewTiles) {
+            matches.push(verticalMatch);
+            verticalMatch.forEach(tile => allMatchedTiles.add(tile));
+          }
+        }
+      }
+    }
 
-              if (groups.indexOf(tileGrid[y][x + 1]!) === -1) {
-                groups.push(tileGrid[y][x + 1]!);
-              }
+    return this.mergeOverlappingMatches(matches);
+  }
 
-              if (groups.indexOf(tileGrid[y][x + 2]!) === -1) {
-                groups.push(tileGrid[y][x + 2]!);
+  private getHorizontalMatch(tileGrid: (Tile | undefined)[][], startX: number, y: number): Tile[] {
+    const match: Tile[] = [];
+    const firstTile = tileGrid[y][startX];
+
+    if (!firstTile) return match;
+
+    for (let x = startX; x < tileGrid[y].length; x++) {
+      const currentTile = tileGrid[y][x];
+      if (currentTile && currentTile.getTileType() === firstTile.getTileType()) {
+        match.push(currentTile);
+      } else {
+        break;
+      }
+    }
+
+    return match;
+  }
+
+  private getVerticalMatch(tileGrid: (Tile | undefined)[][], x: number, startY: number): Tile[] {
+    const match: Tile[] = [];
+    const firstTile = tileGrid[startY][x];
+
+    if (!firstTile) return match;
+
+    for (let y = startY; y < tileGrid.length; y++) {
+      const currentTile = tileGrid[y][x];
+      if (currentTile && currentTile.getTileType() === firstTile.getTileType()) {
+        match.push(currentTile);
+      } else {
+        break;
+      }
+    }
+
+    return match;
+  }
+
+  private mergeOverlappingMatches(matches: Tile[][]): Tile[][] {
+    if (matches.length <= 1) return matches;
+
+    const mergedMatches: Tile[][] = [];
+    const processedMatches = new Set<number>();
+
+    for (let i = 0; i < matches.length; i++) {
+      if (processedMatches.has(i)) continue;
+
+      let currentMatch = [...matches[i]];
+      processedMatches.add(i);
+
+      let foundOverlap = true;
+      while (foundOverlap) {
+        foundOverlap = false;
+
+        for (let j = i + 1; j < matches.length; j++) {
+          if (processedMatches.has(j)) continue;
+
+          const hasOverlap = matches[j].some(tile => currentMatch.indexOf(tile) !== -1);
+
+          if (hasOverlap) {
+            matches[j].forEach(tile => {
+              if (currentMatch.indexOf(tile) === -1) {
+                currentMatch.push(tile);
               }
-            }
+            });
+            processedMatches.add(j);
+            foundOverlap = true;
           }
         }
       }
 
-      if (groups.length > 0) {
-        matches.push(groups);
-      }
+      mergedMatches.push(currentMatch);
     }
 
-    for (let j = 0; j < tileGrid.length; j++) {
-      const tempArr = tileGrid[j];
-      groups = [];
-      for (let i = 0; i < tempArr.length; i++) {
-        if (i < tempArr.length - 2)
-          if (tileGrid[i][j] && tileGrid[i + 1][j] && tileGrid[i + 2][j]) {
-            if (
-              tileGrid[i][j]!.getTileType() === tileGrid[i + 1][j]!.getTileType() &&
-              tileGrid[i + 1][j]!.getTileType() === tileGrid[i + 2][j]!.getTileType()
-            ) {
-              if (groups.length > 0) {
-                if (groups.indexOf(tileGrid[i][j]!) === -1) {
-                  matches.push(groups);
-                  groups = [];
-                }
-              }
-
-              if (groups.indexOf(tileGrid[i][j]!) === -1) {
-                groups.push(tileGrid[i][j]!);
-              }
-              if (groups.indexOf(tileGrid[i + 1][j]!) === -1) {
-                groups.push(tileGrid[i + 1][j]!);
-              }
-              if (groups.indexOf(tileGrid[i + 2][j]!) === -1) {
-                groups.push(tileGrid[i + 2][j]!);
-              }
-            }
-          }
-      }
-      if (groups.length > 0) matches.push(groups);
-    }
-
-    return matches;
+    return mergedMatches;
   }
 
   public hasMatches(tileGrid: (Tile | undefined)[][]): boolean {
