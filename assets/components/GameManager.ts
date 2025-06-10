@@ -2,20 +2,17 @@ import {
   _decorator,
   Component,
   EventMouse,
-  Input,
   instantiate,
   Prefab,
   tween,
   Vec3,
   type Node,
   Camera,
-  UITransform,
 } from 'cc';
 const { ccclass, property } = _decorator;
-import GameConfig from '../constants/GameConfig';
+import { GameConfig } from '../constants/GameConfig';
 import { Tile } from './Tile';
 import { Frame } from './Frame';
-import { CONFIG } from './animation-handler/TileAnimationConfig';
 import { GameGlobalData } from './GameGlobalData';
 
 @ccclass('GameManager')
@@ -32,6 +29,7 @@ export default class GameManager extends Component {
 
   private maxDifference = 6;
   private currentTilesQuantity = GameConfig.GridWidth * GameConfig.GridHeight;
+  private playerIdleTime = 0;
 
   @property(Prefab)
   private tilePrefab: Prefab | null = null;
@@ -49,6 +47,40 @@ export default class GameManager extends Component {
 
   start(): void {
     this.createBoard();
+  }
+
+  update(dt: number): void {
+    this.checkIdleTime(dt);
+  }
+
+  private checkIdleTime(dt: number): void {
+    this.playerIdleTime += dt;
+    console.log('player idle time', this.playerIdleTime);
+    if (this.playerIdleTime > GameConfig.MaxIdleTime) {
+      this.makeTilesIdleAnimation();
+      this.playerIdleTime = 0;
+    }
+  }
+
+  private async makeTilesIdleAnimation(): Promise<void> {
+    for (let i = 0; i < GameConfig.GridHeight; i++) {
+      for (let j = 0, x = i; j <= i && x >= 0; j++, x--) {
+        const tile = this.tileGrid[x][j];
+        if (tile) {
+          tile.onPlayerIdle();
+        }
+      }
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    for (let j = 1; j < GameConfig.GridWidth; j++) {
+      for (let i = j, y = GameConfig.GridHeight - 1; i < GameConfig.GridWidth && y >= 0; i++, y--) {
+        const tile = this.tileGrid[y][i];
+        if (tile) {
+          tile.onPlayerIdle();
+        }
+      }
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
   }
 
   private createBoard() {
@@ -96,7 +128,10 @@ export default class GameManager extends Component {
   }
 
   private addTile(x: number, y: number): Tile {
-    const randomTileType: string = this.getRandomTileType();
+    const randomTileType =
+      GameConfig.CandyTypes[
+        Math.floor(Math.random() * Math.min(this.maxDifference, GameConfig.CandyTypes.length))
+      ];
 
     const node = instantiate(this.tilePrefab) as Node | null;
 
@@ -126,15 +161,10 @@ export default class GameManager extends Component {
     return tile;
   }
 
-  private getRandomTileType(): string {
-    let randomTileType: string =
-      GameConfig.CandyTypes[Math.floor(Math.random() * this.maxDifference)];
-
-    return randomTileType;
-  }
-
   private tileDown(tile: Tile): void {
     if (!this.canMove) return;
+
+    this.playerIdleTime = 0;
 
     if (!this.firstSelectedTile || this.firstSelectedTile === tile) {
       this.firstSelectedTile = tile;
