@@ -82,9 +82,6 @@ export class AnimationManager extends Component {
       const finalPosition = this.boardManager!.getWorldPosition({ x, y: toY });
 
       if (isNewTile) {
-        const spawnHeight = (GameConfig.GridHeight - toY + 1) * GameConfig.TileHeight;
-        const startY = finalPosition.y + spawnHeight;
-        tile.node.setPosition(finalPosition.x, startY, 0);
         tile.node.setScale(0.8, 0.8, 1.0);
       } else {
         const currentPosition = this.boardManager!.getWorldPosition({ x, y: fromY });
@@ -92,15 +89,24 @@ export class AnimationManager extends Component {
       }
     });
 
-    const fallDuration = 0.3;
+    const baseFallDuration = 0.3;
     const animationPromises: Promise<void>[] = [];
 
-    fallTasks.forEach(task => {
-      const { tile, toY, x, isNewTile } = task;
+    fallTasks.forEach((task, index) => {
+      const { tile, toY, x, isNewTile, fromY } = task;
       const finalPosition = this.boardManager!.getWorldPosition({ x, y: toY });
 
       const animationPromise = new Promise<void>(resolve => {
+        const delay = isNewTile ? Math.abs(fromY) * 0.05 : 0;
+
+        const fallDistance = isNewTile ? Math.abs(fromY - toY) : Math.abs(fromY - toY);
+        const fallDuration = baseFallDuration + fallDistance * 0.02;
+
         let tweenChain = tween(tile.node);
+
+        if (delay > 0) {
+          tweenChain = tweenChain.delay(delay);
+        }
 
         if (isNewTile) {
           tweenChain = tweenChain.to(
@@ -468,7 +474,6 @@ export class AnimationManager extends Component {
     const centerY = (GameConfig.GridHeight * GameConfig.TileHeight) / 2;
     const radius = Math.min(centerX, centerY) + GameConfig.TileWidth * 2;
 
-    // Collect all valid tiles and their original positions
     for (let y = 0; y < GameConfig.GridHeight; y++) {
       for (let x = 0; x < GameConfig.GridWidth; x++) {
         const tile = tileGrid[y][x];
@@ -482,7 +487,7 @@ export class AnimationManager extends Component {
     }
 
     if (originalPositions.length === 0) {
-      return; // No valid tiles to animate
+      return;
     }
 
     const totalTiles = originalPositions.length;
@@ -490,7 +495,6 @@ export class AnimationManager extends Component {
     const circlePhase = animationDuration * 0.6;
     const returnPhase = animationDuration * 0.4;
 
-    // First phase: Move tiles in circular motion
     const circlePromises = originalPositions.map((tileData, index) => {
       return new Promise<void>(resolve => {
         const { tile } = tileData;
@@ -535,10 +539,8 @@ export class AnimationManager extends Component {
       });
     });
 
-    // Wait for circular motion to complete
     await Promise.all(circlePromises);
 
-    // Second phase: Return tiles to original positions
     const returnPromises = originalPositions.map((tileData, index) => {
       return new Promise<void>(resolve => {
         const { tile, originalPos } = tileData;
@@ -564,7 +566,6 @@ export class AnimationManager extends Component {
       });
     });
 
-    // Wait for return animations to complete
     await Promise.all(returnPromises);
   }
 
