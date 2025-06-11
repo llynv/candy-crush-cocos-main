@@ -385,8 +385,6 @@ export default class GameManager extends Singleton {
             );
           });
 
-          matchTiles.push(centerTile);
-
           for (const tile of match) {
             if (tile === centerTile) continue;
             this.boardManager!.clearTileAt(tileCoords.get(tile)!.x, tileCoords.get(tile)!.y);

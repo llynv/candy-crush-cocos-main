@@ -92,12 +92,24 @@ export class SpecialTileManager extends Component {
     await Promise.all(combinePromises);
   }
 
-  public activateSpecialTile(tile: Tile, coords: { x: number; y: number }): Tile[] {
+  public activateSpecialTile(
+    tile: Tile,
+    swapTile: Tile,
+    coords: { x: number; y: number },
+    isPlayerSwap: boolean = false
+  ): Tile[] {
     if (!tile || !tile.node || !tile.node.isValid) return [];
 
     const specialType = tile.getSpecialType();
     const tileGrid = this.boardManager!.getTileGrid();
-    console.log('Activating special tile:', specialType, 'at coords:', coords);
+    console.log(
+      'Activating special tile:',
+      specialType,
+      'at coords:',
+      coords,
+      'isPlayerSwap:',
+      isPlayerSwap
+    );
 
     if (!coords) return [];
 
@@ -106,7 +118,10 @@ export class SpecialTileManager extends Component {
         return this.activateBombTile(coords.x, coords.y, tileGrid, tile);
 
       case SpecialTileType.RAINBOW:
-        return this.activateRainbowTile(tile, tileGrid);
+        if (isPlayerSwap) {
+          return this.activateRainbowTile(tile, swapTile, tileGrid);
+        }
+        return [];
 
       case SpecialTileType.STRIPED_HORIZONTAL:
         return this.activateStripedTile(coords.x, coords.y, tileGrid, 'horizontal');
@@ -228,11 +243,10 @@ export class SpecialTileManager extends Component {
 
   private activateRainbowTile(
     rainbowTile: Tile,
-    tileGrid: (Tile | undefined)[][],
-    targetTile: Tile | null = null
+    targetTile: Tile,
+    tileGrid: (Tile | undefined)[][]
   ): Tile[] {
     const affectedTiles: Tile[] = [];
-
     for (let y = 0; y < GameConfig.GridHeight; y++) {
       for (let x = 0; x < GameConfig.GridWidth; x++) {
         const tile = tileGrid[y][x];
@@ -244,8 +258,8 @@ export class SpecialTileManager extends Component {
     return affectedTiles;
   }
 
-  public getMatchResults(matches: Tile[][]): MatchResult[] {
-    if (!this.boardManager) return [];
+  public getMatchResults(matches: Tile[][] = []): MatchResult[] {
+    if (!this.boardManager || matches.length === 0) return [];
 
     const tileCoords = this.boardManager!.getTileCoords();
     const results: MatchResult[] = [];
@@ -253,13 +267,16 @@ export class SpecialTileManager extends Component {
     for (const match of matches) {
       if (match.length < 3) continue;
 
-      const positions = match.map(tile => tileCoords.get(tile)).filter(pos => pos !== undefined);
+      const positions = match
+        .map(tile => (tile ? tileCoords.get(tile) : undefined))
+        .filter(pos => pos !== undefined);
       if (positions.length === 0) continue;
 
       const shape = this.analyzeMatchShape(positions, match);
       const isHorizontal = shape === MatchShape.LINE_HORIZONTAL;
       const centerIndex = Math.floor(match.length / 2);
       const centerTile = match[centerIndex];
+      if (!centerTile) continue;
       const centerPos = tileCoords.get(centerTile);
 
       if (centerPos) {
@@ -278,10 +295,6 @@ export class SpecialTileManager extends Component {
 
   private analyzeMatchShape(positions: { x: number; y: number }[], tiles: Tile[]): MatchShape {
     if (positions.length < 3) return MatchShape.COMPLEX;
-
-    if (this.isSquarePattern(positions)) {
-      return MatchShape.SQUARE;
-    }
 
     const isHorizontalLine = this.isHorizontalLine(positions);
     const isVerticalLine = this.isVerticalLine(positions);
