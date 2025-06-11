@@ -27,6 +27,14 @@ export class BoardManager extends Component {
     if (this.framePrefab === null) throw new Error('Frame prefab is not set');
   }
 
+  public setTilePrefab(tilePrefab: Prefab): void {
+    this.tilePrefab = tilePrefab;
+  }
+
+  public setFramePrefab(framePrefab: Prefab): void {
+    this.framePrefab = framePrefab;
+  }
+
   public initializeBoard(): void {
     this.createFrames();
     this.createTiles();

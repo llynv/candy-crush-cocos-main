@@ -12,12 +12,13 @@ import {
   Prefab,
 } from 'cc';
 import { GameConfig, TileType } from '../constants/GameConfig';
+import { SpecialTileType } from '../constants/SpecialTileConfig';
 import { TileState } from './states/TileState';
 import { IdleState } from './states/IdleState';
 import { SelectState } from './states/SelectState';
 import { Frame } from './Frame';
 import { GameGlobalData } from './GameGlobalData';
-import { TileAnimationHandler } from './animation-handler/TileAnimationHandler';
+import { AnimationManager } from './managers/AnimationManager';
 
 const { ccclass, property } = _decorator;
 @ccclass('Tile')
@@ -29,6 +30,8 @@ export class Tile extends Component {
   private particleEffect: Prefab | null = null;
 
   private tileType: TileType = GameConfig.CandyTypes[0];
+  private specialType: SpecialTileType = SpecialTileType.NORMAL;
+  private isRainbow: boolean = false;
   private callbacks: Array<(tile: Tile) => void> = [];
 
   private currentState: TileState | null = null;
@@ -109,19 +112,117 @@ export class Tile extends Component {
 
   public setTileType(tileType: TileType) {
     this.tileType = tileType;
+    this.updateTileAppearance();
+  }
 
+  public getSpecialType(): SpecialTileType {
+    return this.specialType;
+  }
+
+  public setSpecialType(specialType: SpecialTileType) {
+    this.specialType = specialType;
+    this.isRainbow = specialType === SpecialTileType.RAINBOW;
+    this.updateTileAppearance();
+  }
+
+  public isSpecial(): boolean {
+    return this.specialType !== SpecialTileType.NORMAL;
+  }
+
+  public setRainbowTile(isRainbow: boolean) {
+    this.isRainbow = isRainbow;
+    this.updateTileAppearance();
+  }
+
+  public isRainbowTile(): boolean {
+    return this.isRainbow;
+  }
+
+  public canMatchWith(otherTile: Tile): boolean {
+    // if (this.isRainbow || otherTile.isRainbow) {
+    //   return true;
+    // }
+
+    return this.tileType === otherTile.tileType;
+  }
+
+  private updateTileAppearance() {
+    if (this.isRainbow) {
+      this.updateRainbowAppearance();
+    } else if (this.specialType === SpecialTileType.BOMB) {
+      this.updateBombAppearance();
+    } else if (this.specialType === SpecialTileType.STRIPED_HORIZONTAL) {
+      this.updateStripedAppearance('horizontal');
+    } else if (this.specialType === SpecialTileType.STRIPED_VERTICAL) {
+      this.updateStripedAppearance('vertical');
+    } else if (this.specialType === SpecialTileType.WRAPPED) {
+      this.updateWrappedAppearance();
+    } else {
+      this.updateNormalAppearance();
+    }
+  }
+
+  private updateNormalAppearance() {
     const spriteFrame = resources.get(`images/${this.tileType.name}/spriteFrame`, SpriteFrame);
+    if (!spriteFrame) throw new Error(`Sprite frame for ${this.tileType.name} not found`);
 
-    if (!spriteFrame) throw new Error(`Sprite frame for ${tileType} not found`);
     this.sprite!.spriteFrame = spriteFrame;
+    this.sprite!.color = new Color(255, 255, 255, 255);
+    const uiTransform = this.sprite!.node.getComponent(UITransform);
+    uiTransform!.setContentSize(50, 50);
+  }
+
+  private updateBombAppearance() {
+    const spriteFrame = resources.get(`images/${this.tileType.name}/spriteFrame`, SpriteFrame);
+    if (spriteFrame) {
+      this.sprite!.spriteFrame = spriteFrame;
+    }
+
+    const uiTransform = this.sprite!.node.getComponent(UITransform);
+    uiTransform!.setContentSize(50, 50);
+
+    console.log('updateBombAppearance', this.specialType);
+  }
+
+  private updateStripedAppearance(direction: 'horizontal' | 'vertical') {
+    const spriteFrame = resources.get(`images/${this.tileType.name}/spriteFrame`, SpriteFrame);
+    if (spriteFrame) {
+      this.sprite!.spriteFrame = spriteFrame;
+    }
+
+    this.sprite!.color = new Color(200, 200, 255, 255);
+
+    const uiTransform = this.sprite!.node.getComponent(UITransform);
+    uiTransform!.setContentSize(50, 50);
+  }
+
+  private updateWrappedAppearance() {
+    const spriteFrame = resources.get(`images/${this.tileType.name}/spriteFrame`, SpriteFrame);
+    if (spriteFrame) {
+      this.sprite!.spriteFrame = spriteFrame;
+    }
+
+    this.sprite!.color = new Color(255, 255, 200, 255);
+
+    const uiTransform = this.sprite!.node.getComponent(UITransform);
+    uiTransform!.setContentSize(50, 50);
+  }
+
+  private updateRainbowAppearance() {
+    this.sprite!.color = new Color(255, 255, 255, 255);
+
+    const rainbowFrame = resources.get(`images/Rainbow Candy/spriteFrame`, SpriteFrame);
+    if (rainbowFrame) {
+      this.sprite!.spriteFrame = rainbowFrame;
+    }
+
+    console.log('updateRainbowAppearance', this.specialType);
+
     const uiTransform = this.sprite!.node.getComponent(UITransform);
     uiTransform!.setContentSize(50, 50);
   }
 
   public changeState(stateName: string): void {
-    console.log('changeState', stateName);
-
-    // Safety check: ensure states map exists and is not null
     if (!this.states) {
       console.warn('Tile states not initialized or tile has been destroyed');
       return;
@@ -211,32 +312,40 @@ export class Tile extends Component {
     this.currentState?.onExit();
   }
 
-  public playParticleEffect(callback?: () => void): void {
-    if (!this.particleEffect) {
-      console.warn('Particle effect prefab is not assigned');
-      return;
-    }
+  public async playParticleEffect(callback?: () => void): Promise<void> {
+    return new Promise<void>(resolve => {
+      if (!this.particleEffect) {
+        console.warn('Particle effect prefab is not assigned');
+        return;
+      }
 
-    const particleNode = instantiate(this.particleEffect);
-    this.node.parent!.addChild(particleNode);
-    particleNode.setPosition(this.node.getPosition());
+      const particleNode = instantiate(this.particleEffect);
+      this.node.parent!.addChild(particleNode);
+      particleNode.setPosition(this.node.getPosition());
 
-    const particleSystem = particleNode.getComponent(ParticleSystem2D);
-    if (particleSystem) {
-      particleSystem.startColor = this.tileType.color;
-      particleSystem.startColorVar = new Color(0, 0, 0, 255);
-      particleSystem.endColor = this.tileType.color;
-      particleSystem.endColorVar = new Color(0, 0, 0, 255);
-      particleSystem.playOnLoad = true;
-    }
+      const particleSystem = particleNode.getComponent(ParticleSystem2D);
+      if (particleSystem) {
+        particleSystem.startColor = this.tileType.color;
+        particleSystem.startColorVar = new Color(0, 0, 0, 255);
+        particleSystem.endColor = this.tileType.color;
+        particleSystem.endColorVar = new Color(0, 0, 0, 255);
+        particleSystem.playOnLoad = true;
+      }
+      callback?.();
 
-    callback?.();
+      resolve();
+    });
   }
 
-  public playDestroyAnimation(callback?: () => void): void {
-    const tileAnimationHandler = this.node.getComponent(TileAnimationHandler);
-    if (tileAnimationHandler) {
-      tileAnimationHandler.animateDestroy(callback);
-    }
+  public playDestroyAnimation(callback?: () => void): Promise<void> {
+    return new Promise<void>(resolve => {
+      this.node.getComponent(AnimationManager)?.animateDestroy(callback, resolve);
+    });
+  }
+
+  public playCombineEffect(targetTile: Tile, callback?: () => void): Promise<void> {
+    return new Promise<void>(resolve => {
+      this.node.getComponent(AnimationManager)?.animateCombine(this, targetTile, callback, resolve);
+    });
   }
 }

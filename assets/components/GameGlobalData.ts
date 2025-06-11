@@ -7,10 +7,6 @@ import { Singleton } from './patterns/Singleton';
 export class GameGlobalData extends Singleton {
   private isMouseDown: boolean = false;
 
-  protected constructor() {
-    super();
-  }
-
   public getIsMouseDown(): boolean {
     return this.isMouseDown;
   }

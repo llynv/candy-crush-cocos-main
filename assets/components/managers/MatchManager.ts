@@ -47,7 +47,7 @@ export class MatchManager extends Component {
 
     for (let x = startX; x < tileGrid[y].length; x++) {
       const currentTile = tileGrid[y][x];
-      if (currentTile && currentTile.getTileType() === firstTile.getTileType()) {
+      if (currentTile && currentTile.canMatchWith(firstTile)) {
         match.push(currentTile);
       } else {
         break;
@@ -65,7 +65,7 @@ export class MatchManager extends Component {
 
     for (let y = startY; y < tileGrid.length; y++) {
       const currentTile = tileGrid[y][x];
-      if (currentTile && currentTile.getTileType() === firstTile.getTileType()) {
+      if (currentTile && currentTile.canMatchWith(firstTile)) {
         match.push(currentTile);
       } else {
         break;

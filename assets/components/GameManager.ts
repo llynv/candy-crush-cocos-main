@@ -8,39 +8,44 @@ import { BoardManager } from './managers/BoardManager';
 import { MatchManager } from './managers/MatchManager';
 import { AnimationManager, FallTask } from './managers/AnimationManager';
 import { InputManager } from './managers/InputManager';
+import { ProgressManager } from './managers/ProgressManager';
+import { SpecialTileManager, MatchResult } from './managers/SpecialTileManager';
+import { ParticleEffectManager } from './managers/ParticleEffectManager';
+import { Singleton } from './patterns/Singleton';
+import { SpecialTileType } from '../constants/SpecialTileConfig';
 
 @ccclass('GameManager')
-export default class GameManager extends Component {
+export default class GameManager extends Singleton {
   @property(Camera)
   private camera: Camera | null = null;
 
-  @property(BoardManager)
   private boardManager: BoardManager | null = null;
-
-  @property(MatchManager)
   private matchManager: MatchManager | null = null;
-
-  @property(AnimationManager)
   private animationManager: AnimationManager | null = null;
-
-  @property(InputManager)
   private inputManager: InputManager | null = null;
+  private specialTileManager: SpecialTileManager | null = null;
+  private particleEffectManager: ParticleEffectManager | null = null;
 
   private playerIdleTime = 0;
   private currentTilesQuantity = GameConfig.GridWidth * GameConfig.GridHeight;
   private canMove = false;
   private firstSelectedTile: Tile | undefined = undefined;
   private secondSelectedTile: Tile | undefined = undefined;
+  private pendingScoreData: { matchCount: number; matchSize: number } | null = null;
+  private swappedTiles: Tile[] = [];
 
   protected __preload(): void {
+    this.assignManagers();
     if (!this.boardManager) throw new Error('BoardManager is required');
     if (!this.matchManager) throw new Error('MatchManager is required');
     if (!this.animationManager) throw new Error('AnimationManager is required');
     if (!this.inputManager) throw new Error('InputManager is required');
+    if (!this.specialTileManager) throw new Error('SpecialTileManager is required');
+    if (!this.particleEffectManager) throw new Error('ParticleEffectManager is required');
   }
 
   protected start(): void {
-    this.initializeManagers();
+    this.setupProgressManager();
     this.createBoard();
   }
 
@@ -48,8 +53,28 @@ export default class GameManager extends Component {
     this.checkIdleTime(dt);
   }
 
-  private initializeManagers(): void {
-    this.animationManager!.setBoardManager(this.boardManager!);
+  private assignManagers(): void {
+    this.boardManager = this.node.getComponent(BoardManager);
+    this.matchManager = this.node.getComponent(MatchManager);
+    this.animationManager = this.node.getComponent(AnimationManager);
+    this.inputManager = this.node.getComponent(InputManager);
+    this.specialTileManager = this.node.getComponent(SpecialTileManager);
+    this.particleEffectManager = this.node.getComponent(ParticleEffectManager);
+  }
+
+  private setupProgressManager(): void {
+    ProgressManager.getInstance().onMilestoneCompleted(this.handleMilestoneCompleted.bind(this));
+  }
+
+  private async handleMilestoneCompleted(): Promise<void> {
+    console.log('Milestone completed! Starting celebration animation...');
+
+    this.canMove = false;
+    GameGlobalData.getInstance().setIsMouseDown(true);
+
+    this.createBoard();
+
+    await this.animationManager!.triggerMilestoneNewBoard();
   }
 
   private createBoard(): void {
@@ -59,6 +84,7 @@ export default class GameManager extends Component {
     this.setupTileCallbacks();
     this.firstSelectedTile = undefined;
     this.secondSelectedTile = undefined;
+    this.pendingScoreData = null;
 
     this.checkMatches().then(() => {
       this.resetTile();
@@ -167,6 +193,8 @@ export default class GameManager extends Component {
       return;
     }
 
+    this.swappedTiles = [this.firstSelectedTile, this.secondSelectedTile];
+
     tileGrid[firstSelectedTileCoords.y][firstSelectedTileCoords.x] = this.secondSelectedTile;
     tileGrid[secondSelectedTileCoords.y][secondSelectedTileCoords.x] = this.firstSelectedTile;
 
@@ -201,13 +229,25 @@ export default class GameManager extends Component {
   private async checkMatches(isSwapCheck: boolean = false): Promise<void> {
     const tileGrid = this.boardManager!.getTileGrid();
     const matches = this.matchManager!.findMatches(tileGrid);
-
     if (matches.length > 0) {
       this.removeTileGroup(matches).then(async () => {
         this.tileUp();
         await this.resetTile();
       });
     } else {
+      if (this.pendingScoreData) {
+        const milestoneCompleted = ProgressManager.getInstance().addScore(
+          this.pendingScoreData.matchCount,
+          this.pendingScoreData.matchSize
+        );
+        this.pendingScoreData = null;
+
+        if (milestoneCompleted) {
+          await this.handleMilestoneCompleted();
+          return;
+        }
+      }
+
       if (isSwapCheck) {
         this.swapTiles();
       } else {
@@ -316,32 +356,40 @@ export default class GameManager extends Component {
   }
 
   private removeTileGroup(matches: Tile[][]): Promise<void> {
-    return new Promise<void>(resolve => {
+    return new Promise<void>(async resolve => {
       const tileCoords = this.boardManager!.getTileCoords();
-      let match = [];
+      let matchTiles: Tile[] = [];
       let totalTilesToDestroy = 0;
       let tilesDestroyed = 0;
 
-      for (let i = 0; i < matches.length; i++) {
-        const tempArr = matches[i];
+      const combineCallbacks: Array<() => void> = [];
 
-        for (let j = 0; j < tempArr.length; j++) {
-          const tile = tempArr[j];
+      for (const match of matches) {
+        if (match.length >= 4) {
+          const centerTile = match[Math.floor(match.length / 2)];
+          combineCallbacks.push(async () => {
+            await this.specialTileManager!.createSpecialTile(
+              centerTile,
+              match.length === 4 ? SpecialTileType.BOMB : SpecialTileType.RAINBOW,
+              match.filter(tile => tile !== centerTile)
+            );
+          });
 
-          if (!tile || !tileCoords.has(tile)) {
-            continue;
+          matchTiles.push(centerTile);
+
+          for (const tile of match) {
+            if (tile === centerTile) continue;
+            this.boardManager!.clearTileAt(tileCoords.get(tile)!.x, tileCoords.get(tile)!.y);
           }
-
-          const coords = tileCoords.get(tile)!;
-
-          if (coords.x !== -1 && coords.y !== -1) {
-            match.push(tile.getTileType());
-            totalTilesToDestroy++;
-          }
+        } else {
+          totalTilesToDestroy += match.length;
+          matchTiles.push(...match);
         }
       }
 
-      console.log('match', match);
+      await Promise.all(combineCallbacks.map(callback => callback()));
+
+      const destroyCallbacks: Array<() => void> = [];
 
       if (totalTilesToDestroy === 0) {
         resolve();
@@ -355,30 +403,34 @@ export default class GameManager extends Component {
         }
       };
 
-      for (let i = 0; i < matches.length; i++) {
-        const tempArr = matches[i];
+      for (const tile of matchTiles) {
+        if (!tileCoords.has(tile)) continue;
 
-        for (let j = 0; j < tempArr.length; j++) {
-          const tile = tempArr[j];
+        const coords = tileCoords.get(tile)!;
 
-          if (!tile || !tileCoords.has(tile)) {
+        if (coords.x === -1 && coords.y === -1) {
+          continue;
+        }
+
+        if (tile.isSpecial()) {
+          const affectedTiles = this.specialTileManager!.activateSpecialTile(tile, coords);
+          if (affectedTiles.length === 0) {
             continue;
           }
-
-          const coords = tileCoords.get(tile)!;
-
-          if (coords.x !== -1 && coords.y !== -1) {
-            tile.playDestroyAnimation(() => {
-              tile.playParticleEffect(() => {
-                tile.node.destroy();
-                onTileDestroyed();
-              });
-            });
-
-            this.boardManager!.clearTileAt(coords.x, coords.y);
-          }
+          matchTiles.push(...affectedTiles);
         }
+
+        destroyCallbacks.push(async () => {
+          await tile.playDestroyAnimation();
+          await tile.playParticleEffect();
+          tile.node.destroy();
+          onTileDestroyed();
+        });
+
+        this.boardManager!.clearTileAt(coords.x, coords.y);
       }
+
+      await Promise.all(destroyCallbacks.map(callback => callback()));
     });
   }
 

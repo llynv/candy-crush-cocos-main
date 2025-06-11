@@ -11,10 +11,18 @@ export const GameConfig = {
   TileWidth: 64,
   TileHeight: 64,
   MaxIdleTime: 10,
+  MilestoneSystem: {
+    milestoneThresholds: [1500, 2500, 4000, 6000, 9000, 15000, 25000, 40000, 60000, 90000, 150000],
+    pointsPerTile: 10,
+    bonusPoints: {
+      match4: 50,
+      match5Plus: 100,
+    },
+    celebrationAnimationDuration: 4.5,
+  },
   CandyTypes: [
     {
       name: 'Blue Candy',
-      // light blue
       color: new Color(55, 78, 252, 255),
     },
     {
