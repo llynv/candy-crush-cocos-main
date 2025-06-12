@@ -1,11 +1,6 @@
 import { _decorator, Component } from 'cc';
 import { Tile } from '../Tile';
-import {
-  SpecialTileType,
-  SpecialTileConfig,
-  SpecialTileCreationRules,
-  MatchShape,
-} from '../../constants/SpecialTileConfig';
+import { SpecialTileType, SpecialTileConfig } from '../../constants/SpecialTileConfig';
 import { GameConfig } from '../../constants/GameConfig';
 import { BoardManager } from './BoardManager';
 import { ParticleEffectManager } from './ParticleEffectManager';
@@ -13,14 +8,6 @@ import { AnimationManager } from './AnimationManager';
 import GameManager from '../GameManager';
 
 const { ccclass } = _decorator;
-
-export interface MatchResult {
-  tiles: Tile[];
-  length: number;
-  isHorizontal: boolean;
-  centerPosition: { x: number; y: number };
-  shape: MatchShape;
-}
 
 @ccclass('SpecialTileManager')
 export class SpecialTileManager extends Component {
@@ -30,35 +17,6 @@ export class SpecialTileManager extends Component {
   protected onLoad(): void {
     this.boardManager = this.node.getComponent(BoardManager);
     this.particleEffectManager = this.node.getComponent(ParticleEffectManager);
-  }
-
-  public shouldCreateSpecialTile(matchResult: MatchResult): SpecialTileType | null {
-    const { length, shape } = matchResult;
-
-    switch (shape) {
-      case MatchShape.LINE_HORIZONTAL:
-        if (length === 4) return SpecialTileCreationRules.MATCH_4_HORIZONTAL_CREATES;
-        if (length >= 5) return SpecialTileCreationRules.MATCH_5_LINE_CREATES;
-        break;
-
-      case MatchShape.LINE_VERTICAL:
-        if (length === 4) return SpecialTileCreationRules.MATCH_4_VERTICAL_CREATES;
-        if (length >= 5) return SpecialTileCreationRules.MATCH_5_LINE_CREATES;
-        break;
-
-      case MatchShape.T_SHAPE:
-      case MatchShape.L_SHAPE:
-        return SpecialTileCreationRules.MATCH_5_T_L_CREATES;
-
-      case MatchShape.SQUARE:
-        return SpecialTileCreationRules.MATCH_SQUARE_CREATES;
-
-      case MatchShape.COMPLEX:
-        if (length >= 6) return SpecialTileCreationRules.MATCH_6_PLUS_CREATES;
-        break;
-    }
-
-    return null;
   }
 
   private determineSpecialTileType(match: Tile[]): SpecialTileType | null {

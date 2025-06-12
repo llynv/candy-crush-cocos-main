@@ -42,6 +42,7 @@ export class PausePopup extends Component {
   private onNewGameCallback: (() => void) | null = null;
 
   protected start(): void {
+    this.isVisible = false;
     this.setupButtons();
     this.hide(false);
     this.enhanceVisualStyling();

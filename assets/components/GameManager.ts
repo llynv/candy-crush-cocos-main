@@ -1,18 +1,4 @@
-import {
-  _decorator,
-  Component,
-  Camera,
-  Node,
-  Prefab,
-  instantiate,
-  Vec3,
-  Button,
-  UITransform,
-  Sprite,
-  Label,
-  Color,
-  tween,
-} from 'cc';
+import { _decorator, Camera, Node, Vec3, Button, tween } from 'cc';
 const { ccclass, property } = _decorator;
 
 import { GameConfig } from '../constants/GameConfig';
@@ -23,7 +9,7 @@ import { MatchManager } from './managers/MatchManager';
 import { AnimationManager, FallTask } from './managers/AnimationManager';
 import { InputManager } from './managers/InputManager';
 import { ProgressManager } from './managers/ProgressManager';
-import { SpecialTileManager, MatchResult } from './managers/SpecialTileManager';
+import { SpecialTileManager } from './managers/SpecialTileManager';
 import { ParticleEffectManager } from './managers/ParticleEffectManager';
 import { Singleton } from './patterns/Singleton';
 import { SpecialTileType } from '../constants/SpecialTileConfig';
@@ -68,7 +54,8 @@ export default class GameManager extends Singleton {
   private isGamePaused = false;
   private isGameOver = false;
   private movesRemaining = 30;
-  private gameStartTime = 0;
+
+  private hintActive: boolean = false;
 
   protected __preload(): void {
     this.assignManagers();
@@ -83,7 +70,6 @@ export default class GameManager extends Singleton {
   }
 
   protected start(): void {
-    this.gameStartTime = Date.now();
     this.setupProgressManager();
     this.createBoard();
     this.setupPopups();
@@ -178,6 +164,7 @@ export default class GameManager extends Singleton {
         if (tile) {
           tile.addOnMouseDownCallback(this.tileDown.bind(this));
           tile.addOnMouseUpCallback(this.tileDown.bind(this));
+          tile.addOnRainbowClickCallback(this.handleRainbowClick.bind(this));
         }
       }
     }
@@ -185,15 +172,10 @@ export default class GameManager extends Singleton {
 
   private checkIdleTime(dt: number): void {
     this.playerIdleTime += dt;
-    if (this.playerIdleTime > GameConfig.MaxIdleTime) {
-      this.makeTilesIdleAnimation();
+    if (this.playerIdleTime > GameConfig.HintTime) {
+      this.showHint();
       this.playerIdleTime = 0;
     }
-  }
-
-  private async makeTilesIdleAnimation(): Promise<void> {
-    const tileGrid = this.boardManager!.getTileGrid();
-    await this.animationManager!.animateIdleTiles(tileGrid);
   }
 
   private tileDown(tile: Tile): void {
@@ -414,6 +396,7 @@ export default class GameManager extends Singleton {
 
           virtualTile.addOnMouseDownCallback(this.tileDown.bind(this));
           virtualTile.addOnMouseUpCallback(this.tileDown.bind(this));
+          virtualTile.addOnRainbowClickCallback(this.handleRainbowClick.bind(this));
 
           virtualTile.setFrame(frameGrid[targetY][x]!);
 
@@ -424,7 +407,7 @@ export default class GameManager extends Singleton {
             fromY: startFromY,
             toY: targetY,
             x: x,
-            isNewTile: true,
+            isNewTile: false,
           });
         }
       }
@@ -438,6 +421,10 @@ export default class GameManager extends Singleton {
     }
 
     await this.animationManager!.animateFall(fallTasks);
+
+    if (!this.hasSwappablePair()) {
+      await this.shuffleBoard();
+    }
 
     this.checkMatches();
   }
@@ -457,10 +444,11 @@ export default class GameManager extends Singleton {
       let tilesDestroyed = 0;
 
       const combineCallbacks: Array<() => void> = [];
+      const specialTiles: Set<Tile> = new Set();
 
       for (const match of matches) {
         if (match.length >= 4 && match.every(tile => !tile.isRainbowTile())) {
-          const centerTile = match[Math.floor(match.length / 2)];
+          const centerTile = match[0];
           console.log(
             'match special tile',
             match.length === 4 ? SpecialTileType.BOMB : SpecialTileType.RAINBOW
@@ -480,6 +468,12 @@ export default class GameManager extends Singleton {
             }
             this.boardManager!.clearTileAt(tileCoords.get(tile)!.x, tileCoords.get(tile)!.y);
           }
+
+          match.forEach(tile => {
+            if (tile.isSpecial() && !tile.isRainbowTile()) {
+              specialTiles.add(tile);
+            }
+          });
 
           ProgressManager.getInstance().addPendingScore(match.length, match.length);
         } else {
@@ -535,6 +529,49 @@ export default class GameManager extends Singleton {
             affectedTiles.forEach(tile => matchTiles.add(tile));
           }
 
+          const ranbowSwapCount = this.swappedTiles.filter(t => t.isRainbowTile()).length;
+
+          if (isPlayerSwap && ranbowSwapCount > 0) {
+            if (ranbowSwapCount === 2) {
+              console.log('resolveDestroyAllForRainbow');
+              await this.animationManager!.animateDoubleRainbow(
+                this.swappedTiles[0],
+                this.swappedTiles[1],
+                this.swappedTiles
+              );
+              await this.resolveDestroyAllForRainbow(this.swappedTiles);
+              resolve();
+              return;
+            } else {
+              await this.animationManager!.animateRainbowSwapToType(
+                tile,
+                swapTile.getTileType(),
+                affectedTiles
+              );
+
+              for (const tile of affectedTiles) {
+                if (tile.isSpecial()) {
+                  this.particleEffectManager!.playSpecialTileDestroyEffect(
+                    tile.node.getWorldPosition(),
+                    tile.node.parent!,
+                    tile.getSpecialType()
+                  );
+                }
+
+                this.boardManager!.clearTileAt(tileCoords.get(tile)!.x, tileCoords.get(tile)!.y);
+                tile.node.destroy();
+              }
+
+              const rainbowTile = this.swappedTiles.find(t => t.isRainbowTile())!;
+              const coords = tileCoords.get(rainbowTile)!;
+              this.boardManager!.clearTileAt(coords.x, coords.y);
+              rainbowTile.node.destroy();
+
+              resolve();
+              return;
+            }
+          }
+
           if (tile.isRainbowTile()) {
             console.log('is player swap', isPlayerSwap);
             console.log('affectedTiles', affectedTiles);
@@ -552,8 +589,19 @@ export default class GameManager extends Singleton {
             return;
           }
 
+          if (tile.isSpecial()) {
+            this.particleEffectManager!.playSpecialTileDestroyEffect(
+              tile.node.getWorldPosition(),
+              tile.node.parent!,
+              tile.getSpecialType()
+            );
+          }
+
           await tile.playDestroyAnimation();
-          await tile.playParticleEffect();
+
+          if (!tile.isSpecial()) {
+            await tile.playParticleEffect();
+          }
 
           if (tile.node && tile.node.isValid) {
             tile.node.destroy();
@@ -568,6 +616,68 @@ export default class GameManager extends Singleton {
       await Promise.all(destroyCallbacks.map(callback => callback()));
 
       this.swappedTiles = [];
+    });
+  }
+
+  private async resolveDestroyAllForRainbow(swappedTiles: Tile[]): Promise<void> {
+    return new Promise<void>(async resolve => {
+      const destroyCallbacks: Map<number, Array<() => void>> = new Map();
+
+      const tileCoords = this.boardManager!.getTileCoords();
+      const allTiles = this.boardManager!.getTileGrid();
+
+      const tilePositions = swappedTiles.map(tile => tileCoords.get(tile)!);
+
+      for (const tiles of allTiles) {
+        for (const tile of tiles) {
+          if (tile) {
+            const tilePosition = tileCoords.get(tile)!;
+
+            const distance = Math.max(
+              Math.min(
+                Math.abs(tilePosition.x - tilePositions[0].x),
+                Math.abs(tilePosition.x - tilePositions[1].x)
+              ),
+              Math.min(
+                Math.abs(tilePosition.y - tilePositions[0].y),
+                Math.abs(tilePosition.y - tilePositions[1].y)
+              )
+            );
+
+            destroyCallbacks.set(distance, [
+              ...(destroyCallbacks.get(distance) ?? []),
+              async () => {
+                await tile.playDestroyAnimation();
+                await tile.playParticleEffect();
+
+                if (tile.node && tile.node.isValid) {
+                  tile.node.destroy();
+                }
+
+                onTileDestroyed();
+              },
+            ]);
+
+            this.boardManager!.clearTileAt(tilePosition.x, tilePosition.y);
+          }
+        }
+      }
+
+      let tilesDestroyed = 0;
+
+      const onTileDestroyed = () => {
+        tilesDestroyed++;
+        if (tilesDestroyed >= GameConfig.GridWidth * GameConfig.GridHeight) {
+          resolve();
+        }
+      };
+
+      for (let depth = 0; depth <= Math.max(GameConfig.GridWidth, GameConfig.GridHeight); depth++) {
+        const callbacks = destroyCallbacks.get(depth);
+        if (callbacks) {
+          await Promise.all(callbacks.map(callback => callback()));
+        }
+      }
     });
   }
 
@@ -644,11 +754,11 @@ export default class GameManager extends Singleton {
 
     this.setGameInteractionEnabled(false);
 
+    console.log('Game paused');
+
     if (this.pausePopup) {
       this.pausePopup.show();
     }
-
-    console.log('Game paused');
   }
 
   /**
@@ -692,10 +802,6 @@ export default class GameManager extends Singleton {
 
     this.isGamePaused = false;
     this.isGameOver = false;
-    this.movesRemaining = 30;
-    this.gameStartTime = Date.now();
-
-    ProgressManager.getInstance().resetProgress();
 
     this.clearBoard();
     this.createBoard(true);
@@ -748,5 +854,201 @@ export default class GameManager extends Singleton {
    */
   private updateMovesDisplay(): void {
     console.log(`Moves remaining: ${this.movesRemaining}`);
+  }
+
+  private async handleRainbowClick(rainbowTile: Tile): Promise<void> {
+    if (this.isGamePaused || this.isGameOver || !this.canMove) return;
+
+    this.canMove = false;
+    this.playerIdleTime = 0;
+
+    const tileGrid = this.boardManager!.getTileGrid();
+    const availableTargets: Tile[] = [];
+
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+      for (let x = 0; x < GameConfig.GridWidth; x++) {
+        const tile = tileGrid[y][x];
+        if (tile && tile !== rainbowTile && tile.node && tile.node.isValid) {
+          availableTargets.push(tile);
+        }
+      }
+    }
+
+    if (availableTargets.length === 0) {
+      this.canMove = true;
+      return;
+    }
+
+    const randomDestroyCount =
+      Math.floor(
+        Math.random() *
+          (GameConfig.RainbowClick.maxDestroyCount - GameConfig.RainbowClick.minDestroyCount)
+      ) + GameConfig.RainbowClick.minDestroyCount;
+
+    const destroyCount = Math.min(availableTargets.length, randomDestroyCount);
+    const selectedTargets: Tile[] = [];
+
+    const shuffled = [...availableTargets];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    selectedTargets.push(...shuffled.slice(0, destroyCount));
+
+    await this.animationManager!.animateRainbowClickEffect(rainbowTile, selectedTargets);
+
+    const tileCoords = this.boardManager!.getTileCoords();
+    const rainbowCoords = tileCoords.get(rainbowTile);
+    if (rainbowCoords) {
+      this.boardManager!.clearTileAt(rainbowCoords.x, rainbowCoords.y);
+    }
+
+    selectedTargets.forEach(tile => {
+      const coords = tileCoords.get(tile);
+      if (coords) {
+        if (tile.node && tile.node.isValid) {
+          tile.node.destroy();
+        }
+        this.boardManager!.clearTileAt(coords.x, coords.y);
+      }
+    });
+
+    ProgressManager.getInstance().addPendingScore(destroyCount + 1, destroyCount + 1);
+    await rainbowTile.playDestroyAnimation();
+    if (rainbowTile.node && rainbowTile.node.isValid) {
+      rainbowTile.node.destroy();
+    }
+    await this.resetTile();
+  }
+
+  /**
+   * Find a swappable pair of tiles that would result in a match
+   */
+  private findSwappablePair(): [Tile, Tile] | null {
+    const tileGrid = this.boardManager!.getTileGrid();
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+      for (let x = 0; x < GameConfig.GridWidth; x++) {
+        const tile = tileGrid[y][x];
+        if (!tile) continue;
+
+        if (x < GameConfig.GridWidth - 1) {
+          const neighbor = tileGrid[y][x + 1];
+          if (neighbor && this.wouldSwapResultInMatch(tile, neighbor, tileGrid)) {
+            return [tile, neighbor];
+          }
+        }
+
+        if (y < GameConfig.GridHeight - 1) {
+          const neighbor = tileGrid[y + 1][x];
+          if (neighbor && this.wouldSwapResultInMatch(tile, neighbor, tileGrid)) {
+            return [tile, neighbor];
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Helper: would swapping these two tiles result in a match?
+   */
+  private wouldSwapResultInMatch(
+    tileA: Tile,
+    tileB: Tile,
+    tileGrid: (Tile | undefined)[][]
+  ): boolean {
+    let ax = -1,
+      ay = -1,
+      bx = -1,
+      by = -1;
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+      for (let x = 0; x < GameConfig.GridWidth; x++) {
+        if (tileGrid[y][x] === tileA) {
+          ay = y;
+          ax = x;
+        }
+        if (tileGrid[y][x] === tileB) {
+          by = y;
+          bx = x;
+        }
+      }
+    }
+    if (ax === -1 || ay === -1 || bx === -1 || by === -1) return false;
+
+    tileGrid[ay][ax] = tileB;
+    tileGrid[by][bx] = tileA;
+
+    const matches = this.matchManager!.findMatches(tileGrid);
+
+    tileGrid[ay][ax] = tileA;
+    tileGrid[by][bx] = tileB;
+    return matches.length > 0;
+  }
+
+  /**
+   * Show a hint by pulsing two swappable tiles
+   */
+  private async showHint(): Promise<void> {
+    if (this.hintActive) return;
+    const pair = this.findSwappablePair();
+    if (!pair) return;
+    this.hintActive = true;
+    await Promise.all([
+      pair[0].getComponent(AnimationManager)?.animatePulse(10),
+      pair[1].getComponent(AnimationManager)?.animatePulse(10),
+    ]);
+    this.hintActive = false;
+  }
+
+  /**
+   * Returns true if there is at least one swappable pair on the board
+   */
+  private hasSwappablePair(): boolean {
+    return this.findSwappablePair() !== null;
+  }
+
+  /**
+   * Shuffle the board until there is at least one swappable pair
+   */
+  private async shuffleBoard(): Promise<void> {
+    const tileGrid = this.boardManager!.getTileGrid();
+    const allTiles: Tile[] = [];
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+      for (let x = 0; x < GameConfig.GridWidth; x++) {
+        const tile = tileGrid[y][x];
+        if (tile) allTiles.push(tile);
+      }
+    }
+    let attempts = 0;
+    do {
+      for (let i = allTiles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allTiles[i], allTiles[j]] = [allTiles[j], allTiles[i]];
+      }
+
+      let idx = 0;
+      for (let y = 0; y < GameConfig.GridHeight; y++) {
+        for (let x = 0; x < GameConfig.GridWidth; x++) {
+          if (tileGrid[y][x]) {
+            tileGrid[y][x] = allTiles[idx++];
+            const world = this.boardManager!.getWorldPosition({ x, y });
+            tileGrid[y][x]!.node.setPosition(world.x, world.y, 0);
+          }
+        }
+      }
+      const tileCoords = this.boardManager!.getTileCoords();
+      tileCoords.clear();
+      for (let y = 0; y < GameConfig.GridHeight; y++) {
+        for (let x = 0; x < GameConfig.GridWidth; x++) {
+          const tile = tileGrid[y][x];
+          if (tile) {
+            tileCoords.set(tile, { x, y });
+          }
+        }
+      }
+      attempts++;
+
+      if (attempts > 20) break;
+    } while (!this.hasSwappablePair());
   }
 }

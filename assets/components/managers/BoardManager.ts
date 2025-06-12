@@ -22,7 +22,7 @@ export class BoardManager extends Component {
 
   private virtualGrid: (Tile | undefined)[][] = [];
   private tileCoords: Map<Tile, GridPosition> = new Map();
-  private maxDifference = 1;
+  private maxDifference = 4;
 
   private readonly VIRTUAL_GRID_HEIGHT = GameConfig.GridHeight;
 
@@ -134,6 +134,20 @@ export class BoardManager extends Component {
         (-gridPos.y - this.VIRTUAL_GRID_HEIGHT) * GameConfig.TileHeight
       ),
     };
+  }
+
+  public getNeighbors(gridPos: GridPosition): Tile[] {
+    const neighbors: Tile[] = [];
+    const { x, y } = gridPos;
+
+    if (x > 0 && this.getTileAt(x - 1, y)) neighbors.push(this.getTileAt(x - 1, y)!);
+    if (x < GameConfig.GridWidth - 1 && this.getTileAt(x + 1, y))
+      neighbors.push(this.getTileAt(x + 1, y)!);
+    if (y > 0 && this.getTileAt(x, y - 1)) neighbors.push(this.getTileAt(x, y - 1)!);
+    if (y < GameConfig.GridHeight - 1 && this.getTileAt(x, y + 1))
+      neighbors.push(this.getTileAt(x, y + 1)!);
+
+    return neighbors;
   }
 
   public createTileAt(x: number, y: number): Tile {

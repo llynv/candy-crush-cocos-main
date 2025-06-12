@@ -46,7 +46,7 @@ export class GameOverPopup extends Component {
     this.loadHighScore();
     this.createUI();
     this.setupButtons();
-    this.hide(false); // Hide without animation initially
+    this.hide(false);
   }
 
   /**
@@ -86,17 +86,14 @@ export class GameOverPopup extends Component {
     this.popupPanel = new Node('PopupPanel');
     this.node.addChild(this.popupPanel);
 
-    // Add UITransform
     const transform = this.popupPanel.addComponent(UITransform);
     transform.setContentSize(450, 350);
 
-    // Add background sprite
     const sprite = this.popupPanel.addComponent(Sprite);
     sprite.type = Sprite.Type.SLICED;
     sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-    sprite.color = new Color(50, 20, 20, 240); // Dark red semi-transparent
+    sprite.color = new Color(50, 20, 20, 240);
 
-    // Add border effect
     const borderNode = new Node('Border');
     this.popupPanel.addChild(borderNode);
 
@@ -106,8 +103,8 @@ export class GameOverPopup extends Component {
     const borderSprite = borderNode.addComponent(Sprite);
     borderSprite.type = Sprite.Type.SLICED;
     borderSprite.sizeMode = Sprite.SizeMode.CUSTOM;
-    borderSprite.color = new Color(220, 20, 60, 200); // Crimson border
-    borderNode.setSiblingIndex(0); // Behind main panel
+    borderSprite.color = new Color(220, 20, 60, 200);
+    borderNode.setSiblingIndex(0);
 
     this.createPanelContent();
   }
@@ -118,7 +115,6 @@ export class GameOverPopup extends Component {
   private createPanelContent(): void {
     if (!this.popupPanel) return;
 
-    // Title
     const titleNode = new Node('Title');
     this.popupPanel.addChild(titleNode);
     titleNode.setPosition(0, 130, 0);
@@ -130,25 +126,21 @@ export class GameOverPopup extends Component {
     this.titleLabel.string = 'GAME OVER';
     this.titleLabel.fontSize = 38;
     this.titleLabel.isBold = true;
-    this.titleLabel.color = new Color(220, 20, 60, 255); // Crimson
+    this.titleLabel.color = new Color(220, 20, 60, 255);
     this.titleLabel.enableOutline = true;
-    this.titleLabel.outlineColor = new Color(139, 0, 0, 255); // Dark red outline
+    this.titleLabel.outlineColor = new Color(139, 0, 0, 255);
     this.titleLabel.outlineWidth = 4;
 
-    // Add dramatic shadow
     this.titleLabel.enableShadow = true;
     this.titleLabel.shadowColor = new Color(0, 0, 0, 180);
     this.titleLabel.shadowOffset = new Vec2(3, -3);
     this.titleLabel.shadowBlur = 5;
 
-    // Current Score
     this.createScoreDisplay();
 
-    // High Score
     this.createHighScoreDisplay();
 
-    // New Game Button
-    this.newGameButton = this.createButton('New Game', 0, -100, new Color(255, 140, 0, 255)); // Dark orange
+    this.newGameButton = this.createButton('New Game', 0, -100, new Color(255, 140, 0, 255));
   }
 
   /**
@@ -157,12 +149,10 @@ export class GameOverPopup extends Component {
   private createScoreDisplay(): void {
     if (!this.popupPanel) return;
 
-    // Score label container
     const scoreContainer = new Node('ScoreContainer');
     this.popupPanel.addChild(scoreContainer);
     scoreContainer.setPosition(0, 40, 0);
 
-    // Score title
     const scoreTitleNode = new Node('ScoreTitle');
     scoreContainer.addChild(scoreTitleNode);
     scoreTitleNode.setPosition(0, 20, 0);
@@ -179,7 +169,6 @@ export class GameOverPopup extends Component {
     scoreTitleLabel.outlineColor = new Color(0, 0, 0, 200);
     scoreTitleLabel.outlineWidth = 2;
 
-    // Score value
     const scoreValueNode = new Node('ScoreValue');
     scoreContainer.addChild(scoreValueNode);
     scoreValueNode.setPosition(0, -15, 0);
@@ -191,12 +180,11 @@ export class GameOverPopup extends Component {
     this.scoreLabel.string = '0';
     this.scoreLabel.fontSize = 32;
     this.scoreLabel.isBold = true;
-    this.scoreLabel.color = new Color(255, 215, 0, 255); // Gold
+    this.scoreLabel.color = new Color(255, 215, 0, 255);
     this.scoreLabel.enableOutline = true;
-    this.scoreLabel.outlineColor = new Color(139, 69, 19, 255); // Brown outline
+    this.scoreLabel.outlineColor = new Color(139, 69, 19, 255);
     this.scoreLabel.outlineWidth = 3;
 
-    // Add glow effect
     this.scoreLabel.enableShadow = true;
     this.scoreLabel.shadowColor = new Color(255, 165, 0, 150);
     this.scoreLabel.shadowOffset = new Vec2(0, 0);
@@ -209,12 +197,10 @@ export class GameOverPopup extends Component {
   private createHighScoreDisplay(): void {
     if (!this.popupPanel) return;
 
-    // High score container
     const highScoreContainer = new Node('HighScoreContainer');
     this.popupPanel.addChild(highScoreContainer);
     highScoreContainer.setPosition(0, -25, 0);
 
-    // High score title
     const highScoreTitleNode = new Node('HighScoreTitle');
     highScoreContainer.addChild(highScoreTitleNode);
     highScoreTitleNode.setPosition(0, 20, 0);
@@ -231,7 +217,6 @@ export class GameOverPopup extends Component {
     highScoreTitleLabel.outlineColor = new Color(0, 0, 0, 200);
     highScoreTitleLabel.outlineWidth = 2;
 
-    // High score value
     const highScoreValueNode = new Node('HighScoreValue');
     highScoreContainer.addChild(highScoreValueNode);
     highScoreValueNode.setPosition(0, -15, 0);
@@ -243,9 +228,9 @@ export class GameOverPopup extends Component {
     this.highScoreLabel.string = this.highScore.toLocaleString();
     this.highScoreLabel.fontSize = 28;
     this.highScoreLabel.isBold = true;
-    this.highScoreLabel.color = new Color(138, 43, 226, 255); // Blue violet
+    this.highScoreLabel.color = new Color(138, 43, 226, 255);
     this.highScoreLabel.enableOutline = true;
-    this.highScoreLabel.outlineColor = new Color(72, 61, 139, 255); // Dark slate blue outline
+    this.highScoreLabel.outlineColor = new Color(72, 61, 139, 255);
     this.highScoreLabel.outlineWidth = 3;
   }
 
@@ -260,16 +245,13 @@ export class GameOverPopup extends Component {
     const buttonTransform = buttonNode.addComponent(UITransform);
     buttonTransform.setContentSize(220, 55);
 
-    // Button background
     const buttonSprite = buttonNode.addComponent(Sprite);
     buttonSprite.type = Sprite.Type.SLICED;
     buttonSprite.sizeMode = Sprite.SizeMode.CUSTOM;
     buttonSprite.color = color;
 
-    // Button component
     const button = buttonNode.addComponent(Button);
 
-    // Button label
     const labelNode = new Node('Label');
     buttonNode.addChild(labelNode);
 
@@ -285,7 +267,6 @@ export class GameOverPopup extends Component {
     label.outlineColor = new Color(0, 0, 0, 200);
     label.outlineWidth = 2;
 
-    // Store sprite reference for animations
     (button as any).backgroundSprite = buttonSprite;
 
     return button;
@@ -297,15 +278,15 @@ export class GameOverPopup extends Component {
   private createBackgroundOverlay(): void {
     this.backgroundOverlay = new Node('BackgroundOverlay');
     this.node.addChild(this.backgroundOverlay);
-    this.backgroundOverlay.setSiblingIndex(0); // Behind popup panel
+    this.backgroundOverlay.setSiblingIndex(0);
 
     const transform = this.backgroundOverlay.addComponent(UITransform);
-    transform.setContentSize(2000, 2000); // Cover entire screen
+    transform.setContentSize(2000, 2000);
 
     const sprite = this.backgroundOverlay.addComponent(Sprite);
     sprite.type = Sprite.Type.SIMPLE;
     sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-    sprite.color = new Color(0, 0, 0, 150); // Darker overlay for game over
+    sprite.color = new Color(0, 0, 0, 150);
   }
 
   /**
@@ -332,7 +313,6 @@ export class GameOverPopup extends Component {
     const sprite = (button as any).backgroundSprite as Sprite;
     const originalColor = sprite.color.clone();
 
-    // Hover effects
     buttonNode.on(Node.EventType.MOUSE_ENTER, () => {
       tween(buttonNode)
         .to(0.1, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
@@ -356,7 +336,6 @@ export class GameOverPopup extends Component {
       tween(sprite).to(0.1, { color: originalColor }).start();
     });
 
-    // Click effects
     buttonNode.on(Node.EventType.TOUCH_START, () => {
       tween(buttonNode)
         .to(0.05, { scale: new Vec3(0.95, 0.95, 1) }, { easing: 'quadOut' })
@@ -406,7 +385,6 @@ export class GameOverPopup extends Component {
     this.isVisible = true;
     this.node.active = true;
 
-    // Reset initial states
     if (this.popupPanel) {
       this.popupPanel.setScale(0, 0, 1);
       const panelOpacity =
@@ -421,13 +399,11 @@ export class GameOverPopup extends Component {
       bgOpacity.opacity = 0;
     }
 
-    // Animate background overlay
     if (this.backgroundOverlay) {
       const bgOpacity = this.backgroundOverlay.getComponent(UIOpacity)!;
       tween(bgOpacity).to(0.4, { opacity: 255 }, { easing: 'quadOut' }).start();
     }
 
-    // Animate popup panel with dramatic entrance
     if (this.popupPanel) {
       const panelOpacity = this.popupPanel.getComponent(UIOpacity)!;
 
@@ -440,7 +416,6 @@ export class GameOverPopup extends Component {
         .start();
     }
 
-    // Animate score with counting effect
     this.animateScoreCounting();
   }
 
@@ -465,7 +440,7 @@ export class GameOverPopup extends Component {
       }
     };
 
-    setTimeout(updateScore, 800); // Start after panel animation
+    setTimeout(updateScore, 800);
   }
 
   /**
@@ -476,7 +451,6 @@ export class GameOverPopup extends Component {
       this.highScore = this.currentScore;
       this.saveHighScore();
 
-      // Show new high score celebration
       this.celebrateNewHighScore();
     }
   }
@@ -487,17 +461,15 @@ export class GameOverPopup extends Component {
   private celebrateNewHighScore(): void {
     if (!this.highScoreLabel) return;
 
-    // Flash effect for new high score
     const originalColor = this.highScoreLabel.color.clone();
 
     tween(this.highScoreLabel)
-      .to(0.2, { color: new Color(255, 215, 0, 255) }) // Gold flash
-      .to(0.2, { color: new Color(255, 255, 255, 255) }) // White flash
-      .to(0.2, { color: new Color(255, 215, 0, 255) }) // Gold flash
+      .to(0.2, { color: new Color(255, 215, 0, 255) })
+      .to(0.2, { color: new Color(255, 255, 255, 255) })
+      .to(0.2, { color: new Color(255, 215, 0, 255) })
       .to(0.2, { color: originalColor })
       .start();
 
-    // Scale animation
     tween(this.highScoreLabel.node)
       .to(0.3, { scale: new Vec3(1.3, 1.3, 1) }, { easing: 'backOut' })
       .to(0.2, { scale: new Vec3(1, 1, 1) }, { easing: 'quadOut' })
@@ -509,7 +481,7 @@ export class GameOverPopup extends Component {
    */
   private updateScoreDisplays(): void {
     if (this.scoreLabel) {
-      this.scoreLabel.string = '0'; // Will be animated
+      this.scoreLabel.string = '0';
     }
 
     if (this.highScoreLabel) {
@@ -530,7 +502,6 @@ export class GameOverPopup extends Component {
       return;
     }
 
-    // Animate popup panel
     if (this.popupPanel) {
       const panelOpacity =
         this.popupPanel.getComponent(UIOpacity) || this.popupPanel.addComponent(UIOpacity);
@@ -542,7 +513,6 @@ export class GameOverPopup extends Component {
       tween(panelOpacity).to(0.3, { opacity: 0 }, { easing: 'quadIn' }).start();
     }
 
-    // Animate background overlay
     if (this.backgroundOverlay) {
       const bgOpacity =
         this.backgroundOverlay.getComponent(UIOpacity) ||
@@ -555,7 +525,6 @@ export class GameOverPopup extends Component {
         })
         .start();
     } else {
-      // Fallback if no background overlay
       setTimeout(() => {
         this.node.active = false;
       }, 300);
@@ -575,7 +544,7 @@ export class GameOverPopup extends Component {
   public onNewGameClicked(): void {
     this.hide();
     if (this.onNewGameCallback) {
-      setTimeout(() => this.onNewGameCallback!(), 300); // Wait for animation
+      setTimeout(() => this.onNewGameCallback!(), 300);
     }
   }
 
@@ -597,7 +566,5 @@ export class GameOverPopup extends Component {
     }
   }
 
-  protected onDestroy(): void {
-    // this.node.destroy();
-  }
+  protected onDestroy(): void {}
 }

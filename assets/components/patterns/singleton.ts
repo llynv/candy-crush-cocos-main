@@ -12,7 +12,6 @@ export abstract class Singleton extends Component {
       const instance = new this();
       Singleton.instances.set(this, instance);
 
-      // Call initialize if it exists
       if (typeof (instance as any).initialize === 'function') {
         (instance as any).initialize();
       }
@@ -53,9 +52,7 @@ export abstract class Singleton extends Component {
    * Optional initialization method that subclasses can override.
    * This is called once when the singleton instance is first created.
    */
-  protected initialize(): void {
-    // Override in subclasses if needed
-  }
+  protected initialize(): void {}
 
   /**
    * Utility method to get the current instance without creating one.

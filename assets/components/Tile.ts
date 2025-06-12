@@ -10,6 +10,7 @@ import {
   Color,
   instantiate,
   Prefab,
+  Vec3,
 } from 'cc';
 import { GameConfig, TileType } from '../constants/GameConfig';
 import { SpecialTileType } from '../constants/SpecialTileConfig';
@@ -38,6 +39,11 @@ export class Tile extends Component {
   private states: Map<string, TileState> = new Map();
 
   private correspondingFrame: Frame | null = null;
+
+  private mouseDownPos: Vec3 | null = null;
+  private isMouseDownOnThis: boolean = false;
+  private clickThreshold: number = 10;
+  private onRainbowClickCallbacks: Array<(tile: Tile) => void> = [];
 
   protected __preload(): void {
     if (!this.sprite) throw new Error('Sprite is required');
@@ -87,6 +93,18 @@ export class Tile extends Component {
       this.callbacks = this.callbacks.filter(c => c !== callback);
     } else {
       this.callbacks = [];
+    }
+  }
+
+  public addOnRainbowClickCallback(callback: (tile: Tile) => void) {
+    this.onRainbowClickCallbacks.push(callback);
+  }
+
+  public removeOnRainbowClickCallback(callback?: (tile: Tile) => void) {
+    if (callback) {
+      this.onRainbowClickCallbacks = this.onRainbowClickCallbacks.filter(cb => cb !== callback);
+    } else {
+      this.onRainbowClickCallbacks = [];
     }
   }
 
@@ -269,6 +287,9 @@ export class Tile extends Component {
   }
 
   private onMouseDown(event: EventMouse): void {
+    this.isMouseDownOnThis = true;
+    this.mouseDownPos = new Vec3(event.getLocationX(), event.getLocationY(), 0);
+
     GameGlobalData.getInstance().setIsMouseDown(true);
 
     for (const callback of this.callbacks) {
@@ -295,6 +316,25 @@ export class Tile extends Component {
   }
 
   private onMouseUp(event: EventMouse): void {
+    const wasMouseDownOnThis = this.isMouseDownOnThis;
+    this.isMouseDownOnThis = false;
+
+    if (wasMouseDownOnThis && this.mouseDownPos && this.isRainbowTile()) {
+      const mouseUpPos = new Vec3(event.getLocationX(), event.getLocationY(), 0);
+      const distance = Vec3.distance(this.mouseDownPos, mouseUpPos);
+
+      if (distance <= this.clickThreshold) {
+        for (const callback of this.onRainbowClickCallbacks) {
+          callback(this);
+        }
+        this.mouseDownPos = null;
+        GameGlobalData.getInstance().setIsMouseDown(false);
+        return;
+      }
+    }
+
+    this.mouseDownPos = null;
+
     for (const callback of this.callbacks) {
       callback(this);
     }
@@ -304,6 +344,7 @@ export class Tile extends Component {
 
   protected onDestroy(): void {
     this.callbacks = [];
+    this.onRainbowClickCallbacks = [];
 
     if (this.node && this.node.isValid) {
       this.node.off('mouse-down', this.onMouseDown, this);

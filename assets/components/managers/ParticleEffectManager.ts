@@ -37,6 +37,9 @@ export class ParticleEffectManager extends Component {
   @property(Prefab)
   private confettiEffect: Prefab | null = null;
 
+  @property(Prefab)
+  private shockwaveEffect: Prefab | null = null;
+
   public async playSpecialTileCreationEffect(
     tile: Tile,
     specialType: SpecialTileType
@@ -230,7 +233,7 @@ export class ParticleEffectManager extends Component {
 
   public async playMultipleEffects(
     positions: Vec3[],
-    effectType: 'explosion' | 'sparkle' | 'confetti',
+    effectType: 'explosion' | 'sparkle' | 'confetti' | 'shockwave',
     parent: Node
   ): Promise<void> {
     const effectPromises = positions.map((position, index) => {
@@ -242,6 +245,8 @@ export class ParticleEffectManager extends Component {
             this.playSparkleEffect(position, parent).then(resolve);
           } else if (effectType === 'confetti') {
             this.playConfettiEffect(position, parent).then(resolve);
+          } else if (effectType === 'shockwave') {
+            this.playShockwaveEffect(position, parent).then(resolve);
           } else {
             resolve();
           }
@@ -250,6 +255,25 @@ export class ParticleEffectManager extends Component {
     });
 
     await Promise.all(effectPromises);
+  }
+
+  public async playSpecialTileDestroyEffect(
+    position: Vec3,
+    parent: Node,
+    specialType: SpecialTileType
+  ): Promise<void> {
+    if (!this.shockwaveEffect) return;
+    switch (specialType) {
+      case SpecialTileType.BOMB:
+        return this.playEffect(this.shockwaveEffect, position, parent);
+
+      case SpecialTileType.RAINBOW:
+        // return this.playEffect(this.rainbowCreationEffect, position, parent);
+        break;
+
+      default:
+        break;
+    }
   }
 
   private getParticleEffectPrefab(effectType: SpecialTileType): Prefab | null {
@@ -286,6 +310,14 @@ export class ParticleEffectManager extends Component {
       particleSystem.endColorVar = new Color(0, 0, 0, 255);
       particleSystem.playOnLoad = true;
     }
+  }
+
+  /**
+   * Play a shock-wave effect (ring expanding outwards)
+   */
+  public async playShockwaveEffect(position: Vec3, parent: Node): Promise<void> {
+    if (!this.shockwaveEffect) return;
+    return this.playEffect(this.shockwaveEffect, position, parent);
   }
 
   protected onDestroy(): void {

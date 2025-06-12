@@ -989,7 +989,7 @@
   },
   {
     "__type__": "cc.UITransform",
-    "_name": "",
+    "_name": "GameOverPopup",
     "_objFlags": 0,
     "__editorExtras__": {},
     "node": {
@@ -1058,7 +1058,6 @@
       "__id__": 0
     },
     "fileId": "01K7o1wPZBkI9CnMf/HCMJ",
-    "instance": null,
     "targetOverrides": null
   }
 ]

@@ -76,6 +76,7 @@ export const GameConfig = {
   OffsetX: 0,
   OffsetY: 0,
   MaxIdleTime: 10,
+  HintTime: 5,
   MilestoneSystem: {
     milestoneThresholds: [
       1000, 2500, 5000, 10000, 20000, 40000, 80000, 160000, 320000, 640000, 1280000, 2560000,
@@ -87,6 +88,10 @@ export const GameConfig = {
       match5Plus: 100,
     },
     celebrationAnimationDuration: 6,
+  },
+  RainbowClick: {
+    minDestroyCount: 6,
+    maxDestroyCount: 20,
   },
   CandyTypes: [
     {

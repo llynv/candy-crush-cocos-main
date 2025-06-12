@@ -1,11 +1,22 @@
-import { _decorator, Component, tween, Vec3, Color, Node } from 'cc';
+import {
+  _decorator,
+  Component,
+  tween,
+  Vec3,
+  Color,
+  Node,
+  Sprite,
+  instantiate,
+  UITransform,
+} from 'cc';
 import { Tile } from '../Tile';
 import { GameConfig } from '../../constants/GameConfig';
 import { BoardManager, GridPosition } from './BoardManager';
 import { CONFIG, COLOR_PRESETS } from '../../constants/AnimationConfig';
 import { Singleton } from '../patterns/Singleton';
+import { ParticleEffectManager } from './ParticleEffectManager';
 
-const { ccclass } = _decorator;
+const { ccclass, property } = _decorator;
 
 export interface FallTask {
   tile: Tile;
@@ -17,6 +28,9 @@ export interface FallTask {
 
 @ccclass('AnimationManager')
 export class AnimationManager extends Component {
+  @property(Node)
+  private rotationContainer: Node | null = null;
+
   private boardManager: BoardManager | null = null;
 
   private tile: Tile | null = null;
@@ -472,52 +486,43 @@ export class AnimationManager extends Component {
       throw new Error('BoardManager not set');
     }
 
-    const originalPositions: { tile: Tile; originalPos: Vec3 }[] = [];
-
-    const centerX = centerNode.getPosition().x;
-    const centerY = centerNode.getPosition().y;
-
-    const maxRadiusX = (GameConfig.GridWidth * GameConfig.TileWidth) / 2 - GameConfig.TileWidth;
-    const maxRadiusY = (GameConfig.GridHeight * GameConfig.TileHeight) / 2 - GameConfig.TileHeight;
-    const radius = Math.min(maxRadiusX, maxRadiusY) * 1.1;
+    const originalData: { tile: Tile; originalPos: Vec3; originalParent: Node }[] = [];
 
     for (let y = 0; y < GameConfig.GridHeight; y++) {
       for (let x = 0; x < GameConfig.GridWidth; x++) {
         const tile = tileGrid[y][x];
         if (tile && tile.node && tile.node.isValid) {
-          originalPositions.push({
+          originalData.push({
             tile,
             originalPos: tile.node.position.clone(),
+            originalParent: tile.node.parent!,
           });
         }
       }
     }
 
-    if (originalPositions.length === 0) {
-      return;
-    }
+    if (originalData.length === 0) return;
 
-    const totalTiles = originalPositions.length;
+    const totalTiles = originalData.length;
     const animationDuration = GameConfig.MilestoneSystem.celebrationAnimationDuration;
     const moveToCirclePhase = animationDuration * 0.1;
     const circlePhase = animationDuration * 0.7;
     const returnPhase = animationDuration * 0.2;
 
-    const moveToCirclePromises = originalPositions.map((tileData, index) => {
+    const centerPos = centerNode.position.clone();
+
+    const maxRadiusX = (GameConfig.GridWidth * GameConfig.TileWidth) / 2 - GameConfig.TileWidth;
+    const maxRadiusY = (GameConfig.GridHeight * GameConfig.TileHeight) / 2 - GameConfig.TileHeight;
+    const radius = Math.min(maxRadiusX, maxRadiusY) * 1.1;
+
+    const movePromises = originalData.map((data, idx) => {
       return new Promise<void>(resolve => {
-        const { tile } = tileData;
-        const angleOffset = (index / totalTiles) * Math.PI * 2;
-        const delay = (index / totalTiles) * 0.1;
+        const angleOffset = (idx / totalTiles) * Math.PI * 2;
+        const circleX = centerPos.x + Math.cos(angleOffset) * radius;
+        const circleY = centerPos.y + Math.sin(angleOffset) * radius;
+        const delay = (idx / totalTiles) * 0.05;
 
-        if (!tile || !tile.node || !tile.node.isValid) {
-          resolve();
-          return;
-        }
-
-        const circleX = centerX + Math.cos(angleOffset) * radius;
-        const circleY = centerY + Math.sin(angleOffset) * radius;
-
-        tween(tile.node)
+        tween(data.tile.node)
           .delay(delay)
           .parallel(
             tween().to(
@@ -526,7 +531,11 @@ export class AnimationManager extends Component {
               { easing: 'quadOut' }
             ),
             tween()
-              .to(moveToCirclePhase * 0.5, { scale: new Vec3(0.8, 0.8, 1) }, { easing: 'quadOut' })
+              .to(
+                moveToCirclePhase * 0.5,
+                { scale: new Vec3(0.85, 0.85, 1) },
+                { easing: 'quadOut' }
+              )
               .to(moveToCirclePhase * 0.5, { scale: new Vec3(1, 1, 1) }, { easing: 'quadOut' })
           )
           .call(() => resolve())
@@ -534,59 +543,42 @@ export class AnimationManager extends Component {
       });
     });
 
-    await Promise.all(moveToCirclePromises);
+    await Promise.all(movePromises);
 
-    const rotationPromises = originalPositions.map((tileData, index) => {
-      return new Promise<void>(resolve => {
-        const { tile } = tileData;
-        let currentAngle = (index / totalTiles) * Math.PI * 2;
+    const virtualContainer = instantiate(this.rotationContainer!);
 
-        if (!tile || !tile.node || !tile.node.isValid) {
-          resolve();
-          return;
-        }
+    centerNode.parent?.addChild(virtualContainer);
+    virtualContainer.setPosition(centerPos);
+    virtualContainer.setSiblingIndex(this.rotationContainer!.getSiblingIndex());
 
-        const rotationSpeed = (Math.PI * 2) / 3;
-        const updateInterval = 24;
-        const totalSteps = Math.floor((circlePhase * 1000) / updateInterval);
-        let currentStep = 0;
-
-        const rotateStep = () => {
-          if (!tile || !tile.node || !tile.node.isValid || currentStep >= totalSteps) {
-            resolve();
-            return;
-          }
-
-          currentAngle -= rotationSpeed / (1000 / updateInterval);
-          const x = centerX + Math.cos(currentAngle) * radius;
-          const y = centerY + Math.sin(currentAngle) * radius;
-
-          tile.node.setPosition(x, y, 0);
-          currentStep++;
-
-          setTimeout(rotateStep, updateInterval);
-        };
-
-        rotateStep();
-      });
+    originalData.forEach(d => {
+      const worldPos = d.tile.node.getWorldPosition();
+      d.tile.node.setParent(virtualContainer);
+      d.tile.node.setWorldPosition(worldPos);
     });
 
-    await Promise.all(rotationPromises);
+    await new Promise<void>(resolve => {
+      tween(virtualContainer)
+        .to(circlePhase, { angle: -720 }, { easing: 'sineInOut' })
+        .call(() => resolve())
+        .start();
+    });
 
-    const returnPromises = originalPositions.map((tileData, index) => {
+    originalData.forEach(d => {
+      const worldPos = d.tile.node.getWorldPosition();
+      d.tile.node.setParent(d.originalParent);
+      d.tile.node.setWorldPosition(worldPos);
+    });
+
+    virtualContainer.destroy();
+
+    const returnPromises = originalData.map((data, idx) => {
       return new Promise<void>(resolve => {
-        const { tile, originalPos } = tileData;
-        const delay = (index / totalTiles) * 0.15;
-
-        if (!tile || !tile.node || !tile.node.isValid) {
-          resolve();
-          return;
-        }
-
-        tween(tile.node)
+        const delay = (idx / totalTiles) * 0.1;
+        tween(data.tile.node)
           .delay(delay)
           .parallel(
-            tween().to(returnPhase, { position: originalPos }, { easing: 'backOut' }),
+            tween().to(returnPhase, { position: data.originalPos }, { easing: 'backOut' }),
             tween()
               .to(returnPhase * 0.2, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
               .to(returnPhase * 0.8, { scale: new Vec3(1, 1, 1) }, { easing: 'bounceOut' })
@@ -597,8 +589,6 @@ export class AnimationManager extends Component {
     });
 
     await Promise.all(returnPromises);
-
-    console.log('Milestone celebration animation completed');
   }
 
   public async animateSpecialTileActivation(
@@ -623,9 +613,18 @@ export class AnimationManager extends Component {
     if (!bombTile.node || !bombTile.node.isValid) return;
 
     tween(bombTile.node)
-      .to(0.1, { scale: new Vec3(1.5, 1.5, 1) }, { easing: 'quadOut' })
-      .to(0.2, { scale: new Vec3(0.1, 0.1, 1) }, { easing: 'quadIn' })
+      .to(0.12, { scale: new Vec3(1.8, 1.8, 1) }, { easing: 'backOut' })
+      .to(0.18, { scale: new Vec3(0, 0, 1) }, { easing: 'sineIn' })
       .start();
+
+    const particleManager = this.node.getComponent(ParticleEffectManager);
+    if (particleManager && bombTile.node.parent) {
+      console.log('play explosion effect');
+      particleManager.playExplosionEffect(bombTile.node.getWorldPosition(), bombTile.node.parent);
+
+      const positions = affectedTiles.map(tile => tile.node.getWorldPosition());
+      particleManager.playMultipleEffects(positions, 'shockwave', bombTile.node.parent);
+    }
 
     const explosionPromises = affectedTiles.map((tile, index) => {
       return new Promise<void>(resolve => {
@@ -760,11 +759,291 @@ export class AnimationManager extends Component {
     resolve?: () => void
   ): Promise<void> {
     tween(sourceTile.node)
-      .to(0.25, { position: targetTile.node.getPosition() }, { easing: 'quadOut' })
+      .to(0.15, { position: targetTile.node.getPosition() }, { easing: 'quadOut' })
       .call(() => {
         callback?.();
         resolve?.();
       })
       .start();
+  }
+
+  /**
+   * Double rainbow combination – two rainbow tiles fly up, merge and unleash a shock-wave.
+   */
+  public async animateDoubleRainbow(
+    rainbowOne: Tile,
+    rainbowTwo: Tile,
+    affectedTiles: Tile[]
+  ): Promise<void> {
+    if (!rainbowOne.node?.isValid || !rainbowTwo.node?.isValid) return;
+
+    const particleManager = this.node.getComponent(ParticleEffectManager);
+
+    const parentNode = rainbowOne.node.parent;
+    if (!parentNode) return;
+
+    rainbowOne.node.setSiblingIndex(rainbowTwo.node.parent!.children.length);
+    rainbowTwo.node.setSiblingIndex(rainbowOne.node.parent!.children.length);
+
+    const pos1Local = rainbowOne.node.position.clone();
+    const pos2Local = rainbowTwo.node.position.clone();
+    const midPointLocal = pos1Local.clone().add(pos2Local).multiplyScalar(0.5);
+    midPointLocal.y += 120;
+
+    const flyUp = (tile: Tile) =>
+      new Promise<void>(resolve => {
+        tween(tile.node)
+          .to(
+            0.25,
+            {
+              position: new Vec3(tile.node.position.x, tile.node.position.y + 120, 0),
+              scale: new Vec3(1.2, 1.2, 1),
+            },
+            { easing: 'quadOut' }
+          )
+          .to(
+            0.25,
+            {
+              position: midPointLocal,
+            },
+            { easing: 'quadIn' }
+          )
+          .call(() => resolve())
+          .start();
+      });
+
+    await Promise.all([flyUp(rainbowOne), flyUp(rainbowTwo)]);
+
+    await new Promise<void>(resolve => {
+      tween(rainbowTwo.node)
+        .to(0.2, { scale: new Vec3(0, 0, 0) })
+        .call(() => resolve())
+        .start();
+    });
+
+    await new Promise<void>(resolve => {
+      tween(rainbowOne.node)
+        .to(0.2, { scale: new Vec3(2.5, 2.5, 1) }, { easing: 'sineOut' })
+        .call(() => {
+          resolve();
+        })
+        .start();
+    });
+
+    const hitPromises = affectedTiles.map((tile, idx) => {
+      if (!tile.node?.isValid) return Promise.resolve();
+
+      return new Promise<void>(resolve => {
+        const delay = idx * 0.012;
+        tween(tile.node)
+          .delay(delay)
+          .to(0.12, { scale: new Vec3(1.25, 1.25, 1) }, { easing: 'quadOut' })
+          .to(0.18, { scale: new Vec3(0, 0, 1) }, { easing: 'quadIn' })
+          .call(() => resolve())
+          .start();
+      });
+    });
+
+    await Promise.all(hitPromises);
+  }
+
+  /**
+   * Animate rainbow click effect - split into pieces and jump to random tiles
+   */
+  public async animateRainbowClickEffect(rainbowTile: Tile, targetTiles: Tile[]): Promise<void> {
+    if (!rainbowTile.node?.isValid || !rainbowTile.node.parent) return;
+
+    const pieceCount = targetTiles.length;
+
+    const pieces: Node[] = [];
+    const rainbowPos = rainbowTile.node.position.clone();
+
+    for (let i = 0; i < pieceCount; i++) {
+      const piece = new Node(`RainbowPiece_${i}`);
+      piece.addComponent(Sprite);
+      const sprite = piece.getComponent(Sprite)!;
+
+      const uiTransform = piece.addComponent(UITransform);
+      if (uiTransform) {
+        uiTransform.setContentSize(55, 55);
+      }
+
+      const rainbowSprite = rainbowTile.getSprite();
+      if (rainbowSprite && rainbowSprite.spriteFrame) {
+        sprite.spriteFrame = rainbowSprite.spriteFrame;
+      }
+
+      piece.setParent(rainbowTile.node.parent);
+      piece.setPosition(rainbowPos);
+      piece.setScale(0.5, 0.5, 1);
+      pieces.push(piece);
+    }
+
+    const scatterPromises = pieces.map((piece, index) => {
+      const angle = (index / pieceCount) * 360 + Math.random() * 60 - 30;
+      const scatterDistance = 80 + Math.random() * 40;
+      const scatterX = Math.cos((angle * Math.PI) / 180) * scatterDistance;
+      const scatterY = Math.sin((angle * Math.PI) / 180) * scatterDistance;
+
+      return new Promise<void>(resolve => {
+        tween(piece)
+          .to(
+            0.3,
+            {
+              position: new Vec3(rainbowPos.x + scatterX, rainbowPos.y + scatterY, 0),
+              scale: new Vec3(0.6, 0.6, 1),
+            },
+            { easing: 'backOut' }
+          )
+          .call(() => resolve())
+          .start();
+      });
+    });
+
+    tween(rainbowTile.node)
+      .to(0.2, { scale: new Vec3(0, 0, 1) }, { easing: 'backIn' })
+      .start();
+
+    await Promise.all(scatterPromises);
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const flyPromises = pieces.map((piece, index) => {
+      if (index >= targetTiles.length) return Promise.resolve();
+
+      const target = targetTiles[index];
+      if (!target.node?.isValid) return Promise.resolve();
+
+      const targetPos = target.node.position.clone();
+      const delay = index * 0.1;
+
+      return new Promise<void>(resolve => {
+        tween(piece)
+          .delay(delay)
+          .to(
+            0.6,
+            {
+              position: targetPos,
+              scale: new Vec3(0.2, 0.2, 1),
+            },
+            { easing: 'quadInOut' }
+          )
+          .call(() => {
+            if (target.node?.isValid) {
+              tween(target.node)
+                .to(0.1, { scale: new Vec3(1.3, 1.3, 1) }, { easing: 'backOut' })
+                .to(0.2, { scale: new Vec3(0, 0, 1) }, { easing: 'backIn' })
+                .start();
+            }
+
+            piece.destroy();
+            resolve();
+          })
+          .start();
+      });
+    });
+
+    await Promise.all(flyPromises);
+
+    const particleManager = this.node.getComponent(ParticleEffectManager);
+    if (particleManager && rainbowTile.node.parent) {
+      particleManager.playSparkleEffect(rainbowPos, rainbowTile.node.parent);
+    }
+  }
+
+  /**
+   * Animate rainbow swap with a normal tile: rainbow explodes into pieces that fly to all tiles of the swapped type
+   */
+  public async animateRainbowSwapToType(
+    rainbowTile: Tile,
+    targetType: any,
+    targetTiles: Tile[]
+  ): Promise<void> {
+    if (!rainbowTile.node?.isValid || !rainbowTile.node.parent) return;
+    if (!targetTiles.length) return;
+
+    const pieceCount = targetTiles.length;
+    const pieces: Node[] = [];
+    const rainbowPos = rainbowTile.node.position.clone();
+
+    for (let i = 0; i < pieceCount; i++) {
+      const piece = new Node(`RainbowPiece_${i}`);
+      piece.addComponent(Sprite);
+      const sprite = piece.getComponent(Sprite)!;
+      const uiTransform = piece.addComponent(UITransform);
+      if (uiTransform) {
+        uiTransform.setContentSize(55, 55);
+      }
+      const rainbowSprite = rainbowTile.getSprite();
+      if (rainbowSprite && rainbowSprite.spriteFrame) {
+        sprite.spriteFrame = rainbowSprite.spriteFrame;
+      }
+      piece.setParent(rainbowTile.node.parent);
+      piece.setPosition(rainbowPos);
+      piece.setScale(0.5, 0.5, 1);
+      pieces.push(piece);
+    }
+
+    tween(rainbowTile.node)
+      .to(0.2, { scale: new Vec3(0, 0, 1) }, { easing: 'backIn' })
+      .start();
+
+    const scatterPromises = pieces.map((piece, index) => {
+      const angle = (index / pieceCount) * 360 + Math.random() * 60 - 30;
+      const scatterDistance = 80 + Math.random() * 40;
+      const scatterX = Math.cos((angle * Math.PI) / 180) * scatterDistance;
+      const scatterY = Math.sin((angle * Math.PI) / 180) * scatterDistance;
+      return new Promise<void>(resolve => {
+        tween(piece)
+          .to(
+            0.3,
+            {
+              position: new Vec3(rainbowPos.x + scatterX, rainbowPos.y + scatterY, 0),
+              scale: new Vec3(0.6, 0.6, 1),
+            },
+            { easing: 'backOut' }
+          )
+          .call(() => resolve())
+          .start();
+      });
+    });
+    await Promise.all(scatterPromises);
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const flyPromises = pieces.map((piece, index) => {
+      const target = targetTiles[index];
+      if (!target.node?.isValid) return Promise.resolve();
+      const targetPos = target.node.position.clone();
+      const delay = index * 0.07;
+      return new Promise<void>(resolve => {
+        tween(piece)
+          .delay(delay)
+          .to(
+            0.5,
+            {
+              position: targetPos,
+              scale: new Vec3(0.2, 0.2, 1),
+            },
+            { easing: 'quadInOut' }
+          )
+          .call(() => {
+            if (target.node?.isValid) {
+              tween(target.node)
+                .to(0.1, { scale: new Vec3(1.3, 1.3, 1) }, { easing: 'backOut' })
+                .to(0.2, { scale: new Vec3(0, 0, 1) }, { easing: 'backIn' })
+                .start();
+            }
+            piece.destroy();
+            resolve();
+          })
+          .start();
+      });
+    });
+    await Promise.all(flyPromises);
+
+    const particleManager = this.node.getComponent(ParticleEffectManager);
+    if (particleManager && rainbowTile.node.parent) {
+      particleManager.playSparkleEffect(rainbowPos, rainbowTile.node.parent);
+    }
   }
 }

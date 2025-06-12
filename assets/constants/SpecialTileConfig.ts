@@ -61,27 +61,3 @@ export const SpecialTileConfig = {
     activationSound: 'wrapped_explosion',
   },
 } as const;
-
-export const SpecialTileCreationRules = {
-  // 4-tile horizontal match creates horizontal striped
-  MATCH_4_HORIZONTAL_CREATES: SpecialTileType.STRIPED_HORIZONTAL,
-  // 4-tile vertical match creates vertical striped
-  MATCH_4_VERTICAL_CREATES: SpecialTileType.STRIPED_VERTICAL,
-  // 5-tile straight line creates rainbow
-  MATCH_5_LINE_CREATES: SpecialTileType.RAINBOW,
-  // T-shaped or L-shaped 5-tile match creates wrapped candy
-  MATCH_5_T_L_CREATES: SpecialTileType.WRAPPED,
-  // 6+ tile match creates rainbow
-  MATCH_6_PLUS_CREATES: SpecialTileType.RAINBOW,
-  // 2x2 square match creates bomb
-  MATCH_SQUARE_CREATES: SpecialTileType.BOMB,
-} as const;
-
-export enum MatchShape {
-  LINE_HORIZONTAL = 'line_horizontal',
-  LINE_VERTICAL = 'line_vertical',
-  T_SHAPE = 't_shape',
-  L_SHAPE = 'l_shape',
-  SQUARE = 'square',
-  COMPLEX = 'complex',
-}
