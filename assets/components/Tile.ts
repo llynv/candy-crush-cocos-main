@@ -139,9 +139,9 @@ export class Tile extends Component {
   }
 
   public canMatchWith(otherTile: Tile): boolean {
-    // if (this.isRainbow || otherTile.isRainbow) {
-    //   return true;
-    // }
+    if (this.isRainbow || otherTile.isRainbow) {
+      return true;
+    }
 
     return this.tileType === otherTile.tileType;
   }
@@ -304,18 +304,23 @@ export class Tile extends Component {
 
   protected onDestroy(): void {
     this.callbacks = [];
-    this.node.off('mouse-down', this.onMouseDown, this);
-    this.node.off('mouse-enter', this.onMouseEnter, this);
-    this.node.off('mouse-leave', this.onMouseLeave, this);
-    this.node.off('mouse-up', this.onMouseUp, this);
+
+    if (this.node && this.node.isValid) {
+      this.node.off('mouse-down', this.onMouseDown, this);
+      this.node.off('mouse-enter', this.onMouseEnter, this);
+      this.node.off('mouse-leave', this.onMouseLeave, this);
+      this.node.off('mouse-up', this.onMouseUp, this);
+    }
 
     this.currentState?.onExit();
   }
 
   public async playParticleEffect(callback?: () => void): Promise<void> {
     return new Promise<void>(resolve => {
-      if (!this.particleEffect) {
-        console.warn('Particle effect prefab is not assigned');
+      if (!this.particleEffect || !this.node || !this.node.isValid) {
+        console.warn('Particle effect prefab is not assigned or node is invalid');
+        callback?.();
+        resolve();
         return;
       }
 
@@ -339,13 +344,41 @@ export class Tile extends Component {
 
   public playDestroyAnimation(callback?: () => void): Promise<void> {
     return new Promise<void>(resolve => {
-      this.node.getComponent(AnimationManager)?.animateDestroy(callback, resolve);
+      if (!this.node || !this.node.isValid) {
+        console.warn('Cannot play destroy animation: node is null or invalid');
+        callback?.();
+        resolve();
+        return;
+      }
+
+      const animationManager = this.node.getComponent(AnimationManager);
+      if (animationManager) {
+        animationManager.animateDestroy(callback, resolve);
+      } else {
+        console.warn('AnimationManager not found on tile node');
+        callback?.();
+        resolve();
+      }
     });
   }
 
   public playCombineEffect(targetTile: Tile, callback?: () => void): Promise<void> {
     return new Promise<void>(resolve => {
-      this.node.getComponent(AnimationManager)?.animateCombine(this, targetTile, callback, resolve);
+      if (!this.node || !this.node.isValid || !targetTile.node || !targetTile.node.isValid) {
+        console.warn('Cannot play combine effect: node is null or invalid');
+        callback?.();
+        resolve();
+        return;
+      }
+
+      const animationManager = this.node.getComponent(AnimationManager);
+      if (animationManager) {
+        animationManager.animateCombine(this, targetTile, callback, resolve);
+      } else {
+        console.warn('AnimationManager not found on tile node');
+        callback?.();
+        resolve();
+      }
     });
   }
 }
