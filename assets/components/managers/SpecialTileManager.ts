@@ -81,10 +81,16 @@ export class SpecialTileManager extends Component {
     const combinePromises = Array<Promise<void>>();
 
     for (const tile of match) {
+      if (!tile || !tile.node || !tile.node.isValid) {
+        continue;
+      }
+
       combinePromises.push(
         tile.playCombineEffect(souceTile, () => {
           callback?.();
-          tile.node.destroy();
+          if (tile.node && tile.node.isValid) {
+            tile.node.destroy();
+          }
         })
       );
     }
@@ -247,6 +253,18 @@ export class SpecialTileManager extends Component {
     tileGrid: (Tile | undefined)[][]
   ): Tile[] {
     const affectedTiles: Tile[] = [];
+
+    if (targetTile.isRainbowTile()) {
+      tileGrid.forEach(row => {
+        row.forEach(tile => {
+          if (tile && tile.node && tile.node.isValid) {
+            affectedTiles.push(tile);
+          }
+        });
+      });
+      return affectedTiles;
+    }
+
     for (let y = 0; y < GameConfig.GridHeight; y++) {
       for (let x = 0; x < GameConfig.GridWidth; x++) {
         const tile = tileGrid[y][x];
@@ -256,144 +274,5 @@ export class SpecialTileManager extends Component {
     }
 
     return affectedTiles;
-  }
-
-  public getMatchResults(matches: Tile[][] = []): MatchResult[] {
-    if (!this.boardManager || matches.length === 0) return [];
-
-    const tileCoords = this.boardManager!.getTileCoords();
-    const results: MatchResult[] = [];
-
-    for (const match of matches) {
-      if (match.length < 3) continue;
-
-      const positions = match
-        .map(tile => (tile ? tileCoords.get(tile) : undefined))
-        .filter(pos => pos !== undefined);
-      if (positions.length === 0) continue;
-
-      const shape = this.analyzeMatchShape(positions, match);
-      const isHorizontal = shape === MatchShape.LINE_HORIZONTAL;
-      const centerIndex = Math.floor(match.length / 2);
-      const centerTile = match[centerIndex];
-      if (!centerTile) continue;
-      const centerPos = tileCoords.get(centerTile);
-
-      if (centerPos) {
-        results.push({
-          tiles: match,
-          length: match.length,
-          isHorizontal,
-          centerPosition: centerPos,
-          shape,
-        });
-      }
-    }
-
-    return results;
-  }
-
-  private analyzeMatchShape(positions: { x: number; y: number }[], tiles: Tile[]): MatchShape {
-    if (positions.length < 3) return MatchShape.COMPLEX;
-
-    const isHorizontalLine = this.isHorizontalLine(positions);
-    const isVerticalLine = this.isVerticalLine(positions);
-
-    if (isHorizontalLine) return MatchShape.LINE_HORIZONTAL;
-    if (isVerticalLine) return MatchShape.LINE_VERTICAL;
-
-    if (positions.length >= 5) {
-      if (this.isTShape(positions)) return MatchShape.T_SHAPE;
-      if (this.isLShape(positions)) return MatchShape.L_SHAPE;
-    }
-
-    return MatchShape.COMPLEX;
-  }
-
-  private isSquarePattern(positions: { x: number; y: number }[]): boolean {
-    if (positions.length !== 4) return false;
-
-    const sortedPositions = positions.sort((a, b) => a.y - b.y || a.x - b.x);
-    const [p1, p2, p3, p4] = sortedPositions;
-
-    return (
-      p1.x === p3.x &&
-      p2.x === p4.x &&
-      p1.y === p2.y &&
-      p3.y === p4.y &&
-      Math.abs(p1.x - p2.x) === 1 &&
-      Math.abs(p1.y - p3.y) === 1
-    );
-  }
-
-  private isHorizontalLine(positions: { x: number; y: number }[]): boolean {
-    const firstY = positions[0].y;
-    return positions.every(pos => pos.y === firstY);
-  }
-
-  private isVerticalLine(positions: { x: number; y: number }[]): boolean {
-    const firstX = positions[0].x;
-    return positions.every(pos => pos.x === firstX);
-  }
-
-  private isTShape(positions: { x: number; y: number }[]): boolean {
-    const xGroups = new Map<number, number[]>();
-    const yGroups = new Map<number, number[]>();
-
-    positions.forEach(pos => {
-      if (!xGroups.has(pos.x)) xGroups.set(pos.x, []);
-      if (!yGroups.has(pos.y)) yGroups.set(pos.y, []);
-      xGroups.get(pos.x)!.push(pos.y);
-      yGroups.get(pos.y)!.push(pos.x);
-    });
-
-    for (const [y, xList] of yGroups) {
-      if (xList.length >= 3) {
-        const remainingPositions = positions.filter(p => p.y !== y);
-        if (remainingPositions.length >= 2) {
-          const centerX = Math.floor((Math.min(...xList) + Math.max(...xList)) / 2);
-          if (remainingPositions.some(p => p.x === centerX)) {
-            return true;
-          }
-        }
-      }
-    }
-
-    for (const [x, yList] of xGroups) {
-      if (yList.length >= 3) {
-        const remainingPositions = positions.filter(p => p.x !== x);
-        if (remainingPositions.length >= 2) {
-          const centerY = Math.floor((Math.min(...yList) + Math.max(...yList)) / 2);
-          if (remainingPositions.some(p => p.y === centerY)) {
-            return true;
-          }
-        }
-      }
-    }
-
-    return false;
-  }
-
-  private isLShape(positions: { x: number; y: number }[]): boolean {
-    const xGroups = new Map<number, number[]>();
-    const yGroups = new Map<number, number[]>();
-
-    positions.forEach(pos => {
-      if (!xGroups.has(pos.x)) xGroups.set(pos.x, []);
-      if (!yGroups.has(pos.y)) yGroups.set(pos.y, []);
-      xGroups.get(pos.x)!.push(pos.y);
-      yGroups.get(pos.y)!.push(pos.x);
-    });
-
-    for (const pos of positions) {
-      const horizontalCount = yGroups.get(pos.y)?.length || 0;
-      const verticalCount = xGroups.get(pos.x)?.length || 0;
-
-      if (horizontalCount >= 3 && verticalCount >= 3) {
-        return true;
-      }
-    }
-
-    return false;
   }
 }

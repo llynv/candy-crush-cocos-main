@@ -1,4 +1,18 @@
-import { _decorator, Component, Camera } from 'cc';
+import {
+  _decorator,
+  Component,
+  Camera,
+  Node,
+  Prefab,
+  instantiate,
+  Vec3,
+  Button,
+  UITransform,
+  Sprite,
+  Label,
+  Color,
+  tween,
+} from 'cc';
 const { ccclass, property } = _decorator;
 
 import { GameConfig } from '../constants/GameConfig';
@@ -13,11 +27,29 @@ import { SpecialTileManager, MatchResult } from './managers/SpecialTileManager';
 import { ParticleEffectManager } from './managers/ParticleEffectManager';
 import { Singleton } from './patterns/Singleton';
 import { SpecialTileType } from '../constants/SpecialTileConfig';
+import { MilestoneAchievementUI } from './ui/MilestoneAchievementUI';
+import { PausePopup } from './ui/PausePopup';
+import { GameOverPopup } from './ui/GameOverPopup';
 
 @ccclass('GameManager')
 export default class GameManager extends Singleton {
   @property(Camera)
   private camera: Camera | null = null;
+
+  @property(Node)
+  private celebrationNode: Node | null = null;
+
+  @property(Node)
+  private milestoneUINode: Node | null = null;
+
+  @property(PausePopup)
+  private pausePopup: PausePopup | null = null;
+
+  @property(GameOverPopup)
+  private gameOverPopup: GameOverPopup | null = null;
+
+  @property(Button)
+  private pauseButton: Button | null = null;
 
   private boardManager: BoardManager | null = null;
   private matchManager: MatchManager | null = null;
@@ -25,14 +57,18 @@ export default class GameManager extends Singleton {
   private inputManager: InputManager | null = null;
   private specialTileManager: SpecialTileManager | null = null;
   private particleEffectManager: ParticleEffectManager | null = null;
+  private milestoneAchievementUI: MilestoneAchievementUI | null = null;
 
   private playerIdleTime = 0;
-  private currentTilesQuantity = GameConfig.GridWidth * GameConfig.GridHeight;
   private canMove = false;
   private firstSelectedTile: Tile | undefined = undefined;
   private secondSelectedTile: Tile | undefined = undefined;
-  private pendingScoreData: { matchCount: number; matchSize: number } | null = null;
   private swappedTiles: Tile[] = [];
+
+  private isGamePaused = false;
+  private isGameOver = false;
+  private movesRemaining = 30;
+  private gameStartTime = 0;
 
   protected __preload(): void {
     this.assignManagers();
@@ -42,11 +78,15 @@ export default class GameManager extends Singleton {
     if (!this.inputManager) throw new Error('InputManager is required');
     if (!this.specialTileManager) throw new Error('SpecialTileManager is required');
     if (!this.particleEffectManager) throw new Error('ParticleEffectManager is required');
+
+    this.milestoneAchievementUI = this.milestoneUINode?.getComponent(MilestoneAchievementUI)!;
   }
 
   protected start(): void {
+    this.gameStartTime = Date.now();
     this.setupProgressManager();
     this.createBoard();
+    this.setupPopups();
   }
 
   protected update(dt: number): void {
@@ -67,24 +107,62 @@ export default class GameManager extends Singleton {
   }
 
   private async handleMilestoneCompleted(): Promise<void> {
-    console.log('Milestone completed! Starting celebration animation...');
+    console.log('Milestone completed! Starting celebration sequence...');
 
     this.canMove = false;
     GameGlobalData.getInstance().setIsMouseDown(true);
 
-    this.createBoard();
+    const milestoneData = ProgressManager.getInstance().getMilestoneData();
 
-    await this.animationManager!.triggerMilestoneNewBoard();
+    if (this.milestoneAchievementUI) {
+      this.milestoneAchievementUI.showMilestoneAchievement(milestoneData);
+    }
+    this.clearBoard();
+    this.boardManager!.initializeBoard();
+    this.resetFrames();
+
+    const currentTileGrid = this.boardManager!.getTileGrid();
+
+    const tileAnimationPromise = this.animationManager!.animateMilestoneCelebration(
+      currentTileGrid,
+      this.celebrationNode!
+    );
+
+    await Promise.all([tileAnimationPromise]);
+
+    this.setupTileCallbacks();
+    this.firstSelectedTile = undefined;
+    this.secondSelectedTile = undefined;
+
+    this.checkMatches().then(() => {
+      this.resetTile();
+    });
   }
 
-  private createBoard(): void {
+  private clearBoard(): void {
+    const tileGrid = this.boardManager!.getTileGrid();
+
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+      for (let x = 0; x < GameConfig.GridWidth; x++) {
+        const tile = tileGrid[y][x];
+        if (tile && tile.node && tile.node.isValid) {
+          tile.node.destroy();
+        }
+        this.boardManager!.setTileAt(x, y, undefined);
+      }
+    }
+  }
+
+  private createBoard(isFrameExist: boolean = false): void {
     this.canMove = false;
+    if (!isFrameExist) {
+      this.boardManager!.createFrames();
+    }
     GameGlobalData.getInstance().setIsMouseDown(true);
     this.boardManager!.initializeBoard();
     this.setupTileCallbacks();
     this.firstSelectedTile = undefined;
     this.secondSelectedTile = undefined;
-    this.pendingScoreData = null;
 
     this.checkMatches().then(() => {
       this.resetTile();
@@ -119,7 +197,7 @@ export default class GameManager extends Singleton {
   }
 
   private tileDown(tile: Tile): void {
-    if (!this.canMove) return;
+    if (this.isGamePaused || this.isGameOver || !this.canMove) return;
 
     this.playerIdleTime = 0;
 
@@ -139,6 +217,7 @@ export default class GameManager extends Singleton {
       if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
         this.canMove = false;
         this.swapTiles();
+        this.processMoveAndCheckGameState();
       } else {
         this.firstSelectedTile.changeState('idle');
         this.firstSelectedTile = tile;
@@ -152,13 +231,6 @@ export default class GameManager extends Singleton {
     if (!this.firstSelectedTile || !this.secondSelectedTile) {
       this.canMove = true;
       GameGlobalData.getInstance().setIsMouseDown(false);
-      return;
-    }
-
-    if (!this.firstSelectedTile.node?.isValid || !this.secondSelectedTile.node?.isValid) {
-      console.error('Selected tiles are no longer valid');
-      this.tileUp();
-      this.canMove = true;
       return;
     }
 
@@ -229,23 +301,39 @@ export default class GameManager extends Singleton {
   private async checkMatches(isSwapCheck: boolean = false): Promise<void> {
     const tileGrid = this.boardManager!.getTileGrid();
     const matches = this.matchManager!.findMatches(tileGrid);
+
+    if (isSwapCheck && this.swappedTiles.some(tile => tile.isRainbowTile())) {
+      matches.push(this.swappedTiles);
+    }
+
     if (matches.length > 0) {
       this.removeTileGroup(matches).then(async () => {
         this.tileUp();
         await this.resetTile();
       });
     } else {
-      if (this.pendingScoreData) {
-        const milestoneCompleted = ProgressManager.getInstance().addScore(
-          this.pendingScoreData.matchCount,
-          this.pendingScoreData.matchSize
-        );
-        this.pendingScoreData = null;
+      const milestoneCompleted = ProgressManager.getInstance().processPendingScores();
 
-        if (milestoneCompleted) {
-          await this.handleMilestoneCompleted();
-          return;
+      if (milestoneCompleted) {
+        const currentTileGrid = this.boardManager!.getTileGrid();
+        let hasValidTiles = false;
+        for (let y = 0; y < GameConfig.GridHeight && !hasValidTiles; y++) {
+          for (let x = 0; x < GameConfig.GridWidth && !hasValidTiles; x++) {
+            const tile = currentTileGrid[y][x];
+            if (tile && tile.node && tile.node.isValid) {
+              hasValidTiles = true;
+            }
+          }
         }
+
+        if (hasValidTiles) {
+          await this.handleMilestoneCompleted();
+        } else {
+          console.warn('No valid tiles found for milestone animation, creating new board directly');
+          this.clearBoard();
+          this.createBoard();
+        }
+        return;
       }
 
       if (isSwapCheck) {
@@ -365,18 +453,18 @@ export default class GameManager extends Singleton {
   private removeTileGroup(matches: Tile[][]): Promise<void> {
     return new Promise<void>(async resolve => {
       const tileCoords = this.boardManager!.getTileCoords();
-      let matchTiles: Tile[] = [];
-      const totalTilesToDestroy = matches.reduce(
-        (acc, match) => acc + (match.length >= 4 ? 0 : match.length),
-        0
-      );
+      const matchTiles: Set<Tile> = new Set();
       let tilesDestroyed = 0;
 
       const combineCallbacks: Array<() => void> = [];
 
       for (const match of matches) {
-        if (match.length >= 4) {
+        if (match.length >= 4 && match.every(tile => !tile.isRainbowTile())) {
           const centerTile = match[Math.floor(match.length / 2)];
+          console.log(
+            'match special tile',
+            match.length === 4 ? SpecialTileType.BOMB : SpecialTileType.RAINBOW
+          );
           combineCallbacks.push(async () => {
             await this.specialTileManager!.createSpecialTile(
               centerTile,
@@ -387,10 +475,16 @@ export default class GameManager extends Singleton {
 
           for (const tile of match) {
             if (tile === centerTile) continue;
+            if (!tileCoords.has(tile)) {
+              continue;
+            }
             this.boardManager!.clearTileAt(tileCoords.get(tile)!.x, tileCoords.get(tile)!.y);
           }
+
+          ProgressManager.getInstance().addPendingScore(match.length, match.length);
         } else {
-          matchTiles.push(...match);
+          match.forEach(tile => matchTiles.add(tile));
+          ProgressManager.getInstance().addPendingScore(match.length, match.length);
         }
       }
 
@@ -398,24 +492,28 @@ export default class GameManager extends Singleton {
 
       const destroyCallbacks: Array<() => void> = [];
 
-      if (totalTilesToDestroy === 0) {
+      if (matchTiles.size === 0) {
         resolve();
         return;
       }
 
       const onTileDestroyed = () => {
         tilesDestroyed++;
-        if (tilesDestroyed >= totalTilesToDestroy) {
+        if (tilesDestroyed >= matchTiles.size) {
           resolve();
         }
       };
 
       for (const tile of matchTiles) {
-        if (!tileCoords.has(tile)) continue;
+        if (!tileCoords.has(tile)) {
+          onTileDestroyed();
+          continue;
+        }
 
         const coords = tileCoords.get(tile)!;
 
         if (coords.x === -1 && coords.y === -1) {
+          onTileDestroyed();
           continue;
         }
 
@@ -434,14 +532,33 @@ export default class GameManager extends Singleton {
             isPlayerSwap
           );
           if (affectedTiles.length > 0) {
-            matchTiles.push(...affectedTiles);
+            affectedTiles.forEach(tile => matchTiles.add(tile));
+          }
+
+          if (tile.isRainbowTile()) {
+            console.log('is player swap', isPlayerSwap);
+            console.log('affectedTiles', affectedTiles);
+          }
+
+          if (!isPlayerSwap && tile.isRainbowTile()) {
+            onTileDestroyed();
+            continue;
           }
         }
 
         destroyCallbacks.push(async () => {
+          if (!tile || !tile.node || !tile.node.isValid) {
+            onTileDestroyed();
+            return;
+          }
+
           await tile.playDestroyAnimation();
           await tile.playParticleEffect();
-          tile.node.destroy();
+
+          if (tile.node && tile.node.isValid) {
+            tile.node.destroy();
+          }
+
           onTileDestroyed();
         });
 
@@ -450,10 +567,186 @@ export default class GameManager extends Singleton {
 
       await Promise.all(destroyCallbacks.map(callback => callback()));
 
-      // Reset swapped tiles after processing
       this.swappedTiles = [];
     });
   }
 
   protected onDestroy(): void {}
+
+  /**
+   * Setup popup callbacks and pause button
+   */
+  private setupPopups(): void {
+    if (this.pausePopup) {
+      this.pausePopup.setCallbacks(
+        () => this.resumeGame(),
+        () => this.startNewGame()
+      );
+    }
+
+    if (this.gameOverPopup) {
+      this.gameOverPopup.setCallback(() => this.startNewGame());
+    }
+
+    this.setupPauseButtonAnimation();
+    this.pauseButton?.node.on(Button.EventType.CLICK, this.togglePause, this);
+  }
+  /**
+   * Setup pause button animations
+   */
+  private setupPauseButtonAnimation(): void {
+    if (!this.pauseButton) return;
+
+    const buttonNode = this.pauseButton.node;
+    const originalScale = buttonNode.scale.clone();
+
+    buttonNode.on(Node.EventType.MOUSE_ENTER, () => {
+      tween(buttonNode)
+        .to(0.1, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
+        .start();
+    });
+
+    buttonNode.on(Node.EventType.MOUSE_LEAVE, () => {
+      tween(buttonNode).to(0.1, { scale: originalScale }, { easing: 'quadOut' }).start();
+    });
+
+    buttonNode.on(Node.EventType.TOUCH_START, () => {
+      tween(buttonNode)
+        .to(0.05, { scale: new Vec3(0.95, 0.95, 1) }, { easing: 'quadOut' })
+        .start();
+    });
+
+    buttonNode.on(Node.EventType.TOUCH_END, () => {
+      tween(buttonNode).to(0.1, { scale: originalScale }, { easing: 'backOut' }).start();
+    });
+  }
+
+  /**
+   * Toggle pause state
+   */
+  private togglePause(): void {
+    if (this.isGameOver) return;
+
+    if (this.isGamePaused) {
+      this.resumeGame();
+    } else {
+      this.pauseGame();
+    }
+  }
+
+  /**
+   * Pause the game
+   */
+  private pauseGame(): void {
+    if (this.isGamePaused || this.isGameOver) return;
+
+    this.isGamePaused = true;
+
+    this.setGameInteractionEnabled(false);
+
+    if (this.pausePopup) {
+      this.pausePopup.show();
+    }
+
+    console.log('Game paused');
+  }
+
+  /**
+   * Resume the game
+   */
+  private resumeGame(): void {
+    if (!this.isGamePaused) return;
+
+    this.isGamePaused = false;
+
+    this.setGameInteractionEnabled(true);
+
+    console.log('Game resumed');
+  }
+
+  /**
+   * Set game interaction enabled/disabled
+   */
+  private setGameInteractionEnabled(enabled: boolean): void {
+    if (this.boardManager) {
+      const tileGrid = this.boardManager.getTileGrid();
+      for (let y = 0; y < tileGrid.length; y++) {
+        for (let x = 0; x < tileGrid[y].length; x++) {
+          const tile = tileGrid[y][x];
+          if (tile) {
+            const button = tile.getComponent(Button);
+            if (button) {
+              button.interactable = enabled;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Start a new game
+   */
+  public startNewGame(): void {
+    console.log('Starting new game...');
+
+    this.isGamePaused = false;
+    this.isGameOver = false;
+    this.movesRemaining = 30;
+    this.gameStartTime = Date.now();
+
+    ProgressManager.getInstance().resetProgress();
+
+    this.clearBoard();
+    this.createBoard(true);
+
+    this.setGameInteractionEnabled(true);
+
+    console.log('New game started!');
+  }
+
+  /**
+   * Check for game over conditions
+   */
+  private checkGameOverConditions(): void {
+    if (this.isGameOver || this.isGamePaused) return;
+  }
+
+  /**
+   * Trigger game over
+   */
+  private triggerGameOver(reason: string): void {
+    if (this.isGameOver) return;
+
+    console.log('Game Over:', reason);
+
+    this.isGameOver = true;
+    this.setGameInteractionEnabled(false);
+
+    const finalScore = ProgressManager.getInstance().getCurrentScore();
+
+    if (this.gameOverPopup) {
+      setTimeout(() => {
+        this.gameOverPopup!.show(finalScore);
+      }, 1000);
+    }
+  }
+
+  /**
+   * Process a player move
+   */
+  private processMoveAndCheckGameState(): void {
+    this.movesRemaining--;
+
+    this.updateMovesDisplay();
+
+    this.checkGameOverConditions();
+  }
+
+  /**
+   * Update moves display
+   */
+  private updateMovesDisplay(): void {
+    console.log(`Moves remaining: ${this.movesRemaining}`);
+  }
 }

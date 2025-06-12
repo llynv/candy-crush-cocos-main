@@ -1,4 +1,4 @@
-import { _decorator, Component, tween, Vec3, Color } from 'cc';
+import { _decorator, Component, tween, Vec3, Color, Node } from 'cc';
 import { Tile } from '../Tile';
 import { GameConfig } from '../../constants/GameConfig';
 import { BoardManager, GridPosition } from './BoardManager';
@@ -464,15 +464,22 @@ export class AnimationManager extends Component {
   /**
    * Animate all tiles in a circular motion around the board for milestone celebration
    */
-  public async animateMilestoneCelebration(tileGrid: (Tile | undefined)[][]): Promise<void> {
+  public async animateMilestoneCelebration(
+    tileGrid: (Tile | undefined)[][],
+    centerNode: Node
+  ): Promise<void> {
     if (!this.boardManager) {
       throw new Error('BoardManager not set');
     }
 
     const originalPositions: { tile: Tile; originalPos: Vec3 }[] = [];
-    const centerX = (GameConfig.GridWidth * GameConfig.TileWidth) / 2;
-    const centerY = (GameConfig.GridHeight * GameConfig.TileHeight) / 2;
-    const radius = Math.min(centerX, centerY) + GameConfig.TileWidth * 2;
+
+    const centerX = centerNode.getPosition().x;
+    const centerY = centerNode.getPosition().y;
+
+    const maxRadiusX = (GameConfig.GridWidth * GameConfig.TileWidth) / 2 - GameConfig.TileWidth;
+    const maxRadiusY = (GameConfig.GridHeight * GameConfig.TileHeight) / 2 - GameConfig.TileHeight;
+    const radius = Math.min(maxRadiusX, maxRadiusY) * 1.1;
 
     for (let y = 0; y < GameConfig.GridHeight; y++) {
       for (let x = 0; x < GameConfig.GridWidth; x++) {
@@ -492,59 +499,84 @@ export class AnimationManager extends Component {
 
     const totalTiles = originalPositions.length;
     const animationDuration = GameConfig.MilestoneSystem.celebrationAnimationDuration;
-    const circlePhase = animationDuration * 0.6;
-    const returnPhase = animationDuration * 0.4;
+    const moveToCirclePhase = animationDuration * 0.1;
+    const circlePhase = animationDuration * 0.7;
+    const returnPhase = animationDuration * 0.2;
 
-    const circlePromises = originalPositions.map((tileData, index) => {
+    const moveToCirclePromises = originalPositions.map((tileData, index) => {
       return new Promise<void>(resolve => {
         const { tile } = tileData;
         const angleOffset = (index / totalTiles) * Math.PI * 2;
-        const delay = (index / totalTiles) * 0.3;
+        const delay = (index / totalTiles) * 0.1;
 
         if (!tile || !tile.node || !tile.node.isValid) {
           resolve();
           return;
         }
 
+        const circleX = centerX + Math.cos(angleOffset) * radius;
+        const circleY = centerY + Math.sin(angleOffset) * radius;
+
         tween(tile.node)
           .delay(delay)
-          .to(0.3, { scale: new Vec3(0.8, 0.8, 1) }, { easing: 'quadOut' })
-          .call(() => {
-            let currentAngle = angleOffset;
-            const startTime = Date.now();
-
-            const updateCirclePosition = () => {
-              if (!tile || !tile.node || !tile.node.isValid) {
-                resolve();
-                return;
-              }
-
-              const elapsed = (Date.now() - startTime) / 1000;
-
-              if (elapsed < circlePhase) {
-                currentAngle += Math.PI * 4 * (1 / circlePhase) * (1 / 60);
-                const x = centerX + Math.cos(currentAngle) * radius;
-                const y = centerY + Math.sin(currentAngle) * radius;
-
-                tile.node.setPosition(x, y, 0);
-                requestAnimationFrame(updateCirclePosition);
-              } else {
-                resolve();
-              }
-            };
-
-            updateCirclePosition();
-          })
+          .parallel(
+            tween().to(
+              moveToCirclePhase,
+              { position: new Vec3(circleX, circleY, 0) },
+              { easing: 'quadOut' }
+            ),
+            tween()
+              .to(moveToCirclePhase * 0.5, { scale: new Vec3(0.8, 0.8, 1) }, { easing: 'quadOut' })
+              .to(moveToCirclePhase * 0.5, { scale: new Vec3(1, 1, 1) }, { easing: 'quadOut' })
+          )
+          .call(() => resolve())
           .start();
       });
     });
 
-    await Promise.all(circlePromises);
+    await Promise.all(moveToCirclePromises);
+
+    const rotationPromises = originalPositions.map((tileData, index) => {
+      return new Promise<void>(resolve => {
+        const { tile } = tileData;
+        let currentAngle = (index / totalTiles) * Math.PI * 2;
+
+        if (!tile || !tile.node || !tile.node.isValid) {
+          resolve();
+          return;
+        }
+
+        const rotationSpeed = (Math.PI * 2) / 3;
+        const updateInterval = 24;
+        const totalSteps = Math.floor((circlePhase * 1000) / updateInterval);
+        let currentStep = 0;
+
+        const rotateStep = () => {
+          if (!tile || !tile.node || !tile.node.isValid || currentStep >= totalSteps) {
+            resolve();
+            return;
+          }
+
+          currentAngle -= rotationSpeed / (1000 / updateInterval);
+          const x = centerX + Math.cos(currentAngle) * radius;
+          const y = centerY + Math.sin(currentAngle) * radius;
+
+          tile.node.setPosition(x, y, 0);
+          currentStep++;
+
+          setTimeout(rotateStep, updateInterval);
+        };
+
+        rotateStep();
+      });
+    });
+
+    await Promise.all(rotationPromises);
 
     const returnPromises = originalPositions.map((tileData, index) => {
       return new Promise<void>(resolve => {
         const { tile, originalPos } = tileData;
-        const delay = (index / totalTiles) * 0.2;
+        const delay = (index / totalTiles) * 0.15;
 
         if (!tile || !tile.node || !tile.node.isValid) {
           resolve();
@@ -553,13 +585,11 @@ export class AnimationManager extends Component {
 
         tween(tile.node)
           .delay(delay)
-          .to(
-            returnPhase,
-            {
-              position: originalPos,
-              scale: new Vec3(1, 1, 1),
-            },
-            { easing: 'backOut' }
+          .parallel(
+            tween().to(returnPhase, { position: originalPos }, { easing: 'backOut' }),
+            tween()
+              .to(returnPhase * 0.2, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
+              .to(returnPhase * 0.8, { scale: new Vec3(1, 1, 1) }, { easing: 'bounceOut' })
           )
           .call(() => resolve())
           .start();
@@ -567,19 +597,8 @@ export class AnimationManager extends Component {
     });
 
     await Promise.all(returnPromises);
-  }
 
-  /**
-   * Create a new board with celebration animation when milestone is reached
-   */
-  public async triggerMilestoneNewBoard(): Promise<void> {
-    if (!this.boardManager) return;
-
-    const tileGrid = this.boardManager.getTileGrid();
-
-    await this.animateMilestoneCelebration(tileGrid);
-
-    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log('Milestone celebration animation completed');
   }
 
   public async animateSpecialTileActivation(

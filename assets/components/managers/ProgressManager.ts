@@ -18,14 +18,63 @@ export class ProgressManager extends Singleton {
 
   private currentScore = 0;
   private currentMilestone = 0;
+  private moveLeft = 0;
   private totalMilestones = GameConfig.MilestoneSystem.milestoneThresholds.length;
+  private pendingMilestoneData: { matchCount: number; matchSize: number }[] = [];
 
   protected onLoad(): void {}
 
   protected onDestroy(): void {}
 
   /**
+   * Add pending score data that will be processed later after all cascades complete
+   */
+  public addPendingScore(matchCount: number, matchSize: number): void {
+    this.pendingMilestoneData.push({ matchCount, matchSize });
+  }
+
+  /**
+   * Process all pending score data and check for milestone completion
+   * This should be called only after all cascades and animations are complete
+   */
+  public processPendingScores(): boolean {
+    if (this.pendingMilestoneData.length === 0) {
+      return false;
+    }
+
+    let totalPoints = 0;
+    for (const data of this.pendingMilestoneData) {
+      let points = data.matchCount * GameConfig.MilestoneSystem.pointsPerTile;
+
+      if (data.matchSize >= 5) {
+        points += GameConfig.MilestoneSystem.bonusPoints.match5Plus;
+      } else if (data.matchSize === 4) {
+        points += GameConfig.MilestoneSystem.bonusPoints.match4;
+      }
+
+      totalPoints += points;
+    }
+
+    this.currentScore += totalPoints;
+    this.pendingMilestoneData = [];
+
+    const milestoneCompleted = this.checkMilestoneCompletion();
+
+    console.log(
+      'Processed pending scores, total points:',
+      totalPoints,
+      'currentScore:',
+      this.currentScore
+    );
+
+    this.eventTarget.emit('progress-updated', this.getMilestoneData());
+
+    return milestoneCompleted;
+  }
+
+  /**
    * Add score for matches and check for milestone completion
+   * This is the old method, kept for backward compatibility but should use processPendingScores instead
    */
   public addScore(matchCount: number, matchSize: number): boolean {
     let points = matchCount * GameConfig.MilestoneSystem.pointsPerTile;
@@ -39,6 +88,8 @@ export class ProgressManager extends Singleton {
     this.currentScore += points;
 
     const milestoneCompleted = this.checkMilestoneCompletion();
+
+    console.log('currentScore', this.currentScore);
 
     this.eventTarget.emit('progress-updated', this.getMilestoneData());
 
@@ -114,6 +165,8 @@ export class ProgressManager extends Singleton {
   public resetProgress(): void {
     this.currentScore = 0;
     this.currentMilestone = 0;
+    this.moveLeft = 0;
+    this.pendingMilestoneData = [];
     this.eventTarget.emit('progress-updated', this.getMilestoneData());
   }
 
@@ -129,5 +182,9 @@ export class ProgressManager extends Singleton {
    */
   public getCurrentMilestone(): number {
     return this.currentMilestone;
+  }
+
+  public getMoveLeft(): number {
+    return this.moveLeft;
   }
 }

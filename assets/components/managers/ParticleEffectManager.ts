@@ -7,6 +7,7 @@ import {
   Node,
   Vec3,
   Color,
+  UITransform,
 } from 'cc';
 import { SpecialTileType } from '../../constants/SpecialTileConfig';
 import { Tile } from '../Tile';
@@ -33,6 +34,9 @@ export class ParticleEffectManager extends Component {
   @property(Prefab)
   private sparkleEffect: Prefab | null = null;
 
+  @property(Prefab)
+  private confettiEffect: Prefab | null = null;
+
   public async playSpecialTileCreationEffect(
     tile: Tile,
     specialType: SpecialTileType
@@ -58,6 +62,95 @@ export class ParticleEffectManager extends Component {
   public async playSparkleEffect(position: Vec3, parent: Node): Promise<void> {
     if (!this.sparkleEffect) return;
     return this.playEffect(this.sparkleEffect, position, parent);
+  }
+
+  /**
+   * Play confetti effect for milestone celebrations
+   */
+  public async playConfettiEffect(position: Vec3, parent: Node, color?: Color): Promise<void> {
+    const effectPrefab = this.confettiEffect || this.sparkleEffect;
+    if (!effectPrefab) return;
+
+    return this.playColoredEffect(effectPrefab, position, parent, color);
+  }
+
+  /**
+   * Play multiple confetti bursts for milestone celebration
+   */
+  public async playMilestoneConfetti(parent: Node): Promise<void> {
+    const confettiColors = [
+      new Color(255, 215, 0, 255),
+      new Color(255, 20, 147, 255),
+      new Color(0, 191, 255, 255),
+      new Color(50, 205, 50, 255),
+      new Color(255, 165, 0, 255),
+      new Color(138, 43, 226, 255),
+    ];
+
+    const confettiPositions = this.generateConfettiPositions(parent);
+
+    const confettiPromises = confettiPositions.map((position, index) => {
+      return new Promise<void>(resolve => {
+        setTimeout(() => {
+          const color = confettiColors[index % confettiColors.length];
+          this.playConfettiEffect(position, parent, color).then(resolve);
+        }, index * 150);
+      });
+    });
+
+    await Promise.all(confettiPromises);
+  }
+
+  /**
+   * Generate confetti positions around the screen
+   */
+  private generateConfettiPositions(parent: Node): Vec3[] {
+    const positions: Vec3[] = [];
+
+    const bounds = this.getNodeBounds(parent);
+
+    positions.push(
+      new Vec3(bounds.left + 100, bounds.top - 100, 0),
+      new Vec3(bounds.right - 100, bounds.top - 100, 0),
+      new Vec3(bounds.center.x, bounds.top - 50, 0),
+      new Vec3(bounds.left + 50, bounds.center.y + 100, 0),
+      new Vec3(bounds.right - 50, bounds.center.y + 100, 0),
+      new Vec3(bounds.center.x - 200, bounds.top - 150, 0),
+      new Vec3(bounds.center.x + 200, bounds.top - 150, 0)
+    );
+
+    return positions;
+  }
+
+  /**
+   * Get bounds of a node for positioning effects
+   */
+  private getNodeBounds(node: Node) {
+    const defaultBounds = {
+      left: -400,
+      right: 400,
+      top: 300,
+      bottom: -300,
+      center: { x: 0, y: 0 },
+    };
+
+    try {
+      const transform = node.getComponent(UITransform);
+      if (transform && transform.contentSize) {
+        const size = transform.contentSize;
+        return {
+          left: -size.width / 2,
+          right: size.width / 2,
+          top: size.height / 2,
+          bottom: -size.height / 2,
+          center: { x: 0, y: 0 },
+        };
+      }
+    } catch (error) {
+      console.warn('Could not get node bounds, using defaults:', error);
+    }
+
+    return defaultBounds;
   }
 
   private getCreationEffectPrefab(specialType: SpecialTileType): Prefab | null {
@@ -92,12 +185,52 @@ export class ParticleEffectManager extends Component {
     const particleSystem = effectNode.getComponent(ParticleSystem2D);
     if (particleSystem) {
       particleSystem.playOnLoad = true;
+
+      setTimeout(() => {
+        if (effectNode && effectNode.isValid) {
+          effectNode.destroy();
+        }
+      }, 3000);
+    }
+  }
+
+  /**
+   * Play effect with custom color
+   */
+  private playColoredEffect(
+    effectPrefab: Prefab,
+    worldPosition: Vec3,
+    parent: Node | null,
+    color?: Color
+  ): void {
+    if (!parent) return;
+
+    const effectNode = instantiate(effectPrefab);
+    parent.addChild(effectNode);
+    effectNode.setWorldPosition(worldPosition);
+
+    const particleSystem = effectNode.getComponent(ParticleSystem2D);
+    if (particleSystem) {
+      particleSystem.playOnLoad = true;
+
+      if (color) {
+        particleSystem.startColor = color;
+        particleSystem.endColor = color;
+        particleSystem.startColorVar = new Color(50, 50, 50, 0);
+        particleSystem.endColorVar = new Color(50, 50, 50, 0);
+      }
+
+      setTimeout(() => {
+        if (effectNode && effectNode.isValid) {
+          effectNode.destroy();
+        }
+      }, 3000);
     }
   }
 
   public async playMultipleEffects(
     positions: Vec3[],
-    effectType: 'explosion' | 'sparkle',
+    effectType: 'explosion' | 'sparkle' | 'confetti',
     parent: Node
   ): Promise<void> {
     const effectPromises = positions.map((position, index) => {
@@ -105,8 +238,12 @@ export class ParticleEffectManager extends Component {
         setTimeout(() => {
           if (effectType === 'explosion') {
             this.playExplosionEffect(position, parent).then(resolve);
-          } else {
+          } else if (effectType === 'sparkle') {
             this.playSparkleEffect(position, parent).then(resolve);
+          } else if (effectType === 'confetti') {
+            this.playConfettiEffect(position, parent).then(resolve);
+          } else {
+            resolve();
           }
         }, index * 100);
       });
@@ -137,8 +274,8 @@ export class ParticleEffectManager extends Component {
     if (!effectPrefab) return;
 
     const effectNode = instantiate(effectPrefab);
-    tile.node.addChild(effectNode);
-    effectNode.setPosition(0, 0, 0);
+    effectNode.setParent(tile.node);
+    effectNode.setPosition(0, -20, 0);
 
     const particleSystem = effectNode.getComponent(ParticleSystem2D);
     console.log('particleSystem', particleSystem);
@@ -149,5 +286,13 @@ export class ParticleEffectManager extends Component {
       particleSystem.endColorVar = new Color(0, 0, 0, 255);
       particleSystem.playOnLoad = true;
     }
+  }
+
+  protected onDestroy(): void {
+    this.node.children.forEach(child => {
+      if (child.isValid) {
+        child.destroy();
+      }
+    });
   }
 }

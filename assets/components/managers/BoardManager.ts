@@ -22,7 +22,7 @@ export class BoardManager extends Component {
 
   private virtualGrid: (Tile | undefined)[][] = [];
   private tileCoords: Map<Tile, GridPosition> = new Map();
-  private maxDifference = 4;
+  private maxDifference = 1;
 
   private readonly VIRTUAL_GRID_HEIGHT = GameConfig.GridHeight;
 
@@ -39,8 +39,17 @@ export class BoardManager extends Component {
     this.framePrefab = framePrefab;
   }
 
+  public createFrames(): void {
+    this.frameGrid = [];
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+      this.frameGrid[y] = [];
+      for (let x = 0; x < GameConfig.GridWidth; x++) {
+        this.frameGrid[y][x] = this.createFrame(x, y);
+      }
+    }
+  }
+
   public initializeBoard(): void {
-    this.createFrames();
     this.createTiles();
     this.initializeVirtualGrid();
   }
@@ -102,11 +111,13 @@ export class BoardManager extends Component {
       x:
         (-GameConfig.GridWidth * GameConfig.TileWidth) / 2 +
         GameConfig.TileWidth / 2 +
-        gridPos.x * GameConfig.TileWidth,
+        gridPos.x * GameConfig.TileWidth +
+        GameConfig.OffsetX,
       y: -(
         (-GameConfig.GridHeight * GameConfig.TileHeight) / 2 +
         GameConfig.TileHeight / 2 +
-        gridPos.y * GameConfig.TileHeight
+        gridPos.y * GameConfig.TileHeight +
+        GameConfig.OffsetY
       ),
     };
   }
@@ -249,16 +260,6 @@ export class BoardManager extends Component {
       this.virtualGrid[y] = [];
       for (let x = 0; x < GameConfig.GridWidth; x++) {
         this.virtualGrid[y][x] = this.createVirtualTileAt(x, y);
-      }
-    }
-  }
-
-  private createFrames(): void {
-    this.frameGrid = [];
-    for (let y = 0; y < GameConfig.GridHeight; y++) {
-      this.frameGrid[y] = [];
-      for (let x = 0; x < GameConfig.GridWidth; x++) {
-        this.frameGrid[y][x] = this.createFrame(x, y);
       }
     }
   }
