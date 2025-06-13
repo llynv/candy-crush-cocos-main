@@ -1,4 +1,4 @@
-import { Singleton } from './patterns/singleton';
+import { Singleton } from './patterns/Singleton';
 
 /**
  * GameGlobalData class that manages global game data using the Singleton pattern.
@@ -6,10 +6,6 @@ import { Singleton } from './patterns/singleton';
  */
 export class GameGlobalData extends Singleton {
   private isMouseDown: boolean = false;
-
-  protected constructor() {
-    super();
-  }
 
   public getIsMouseDown(): boolean {
     return this.isMouseDown;

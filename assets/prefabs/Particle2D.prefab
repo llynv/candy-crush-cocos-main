@@ -1,7 +1,7 @@
 [
   {
     "__type__": "cc.Prefab",
-    "_name": "Pop",
+    "_name": "Particle2D",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_native": "",
@@ -13,7 +13,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Pop",
+    "_name": "Particle2D",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": null,
@@ -32,8 +32,8 @@
     },
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 0,
-      "y": 0,
+      "x": 383.99999999999994,
+      "y": 683,
       "z": 0
     },
     "_lrot": {
@@ -85,7 +85,7 @@
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "72a9mNYmVG47fX576CuvZ4"
+    "fileId": "2c+YzT/AtOD6bWphC7B83u"
   },
   {
     "__type__": "cc.ParticleSystem2D",
@@ -109,20 +109,20 @@
       "b": 255,
       "a": 255
     },
-    "duration": 0.2,
-    "emissionRate": 2000,
-    "life": 0.4,
-    "lifeVar": 0.2,
-    "angle": 360,
-    "angleVar": 360,
-    "startSize": 12,
-    "startSizeVar": 8,
-    "endSize": 8,
-    "endSizeVar": 6,
-    "startSpin": -47.369998931884766,
+    "duration": -1,
+    "emissionRate": 999.999985098839,
+    "life": 0.20000000298023224,
+    "lifeVar": 0.5,
+    "angle": -90,
+    "angleVar": 45,
+    "startSize": 2,
+    "startSizeVar": 2,
+    "endSize": 1,
+    "endSizeVar": 1,
+    "startSpin": 0,
     "startSpinVar": 0,
-    "endSpin": -47.369998931884766,
-    "endSpinVar": -142.11000061035156,
+    "endSpin": 0,
+    "endSpinVar": 0,
     "sourcePos": {
       "__type__": "cc.Vec2",
       "x": 0,
@@ -130,8 +130,8 @@
     },
     "posVar": {
       "__type__": "cc.Vec2",
-      "x": 100,
-      "y": 4
+      "x": 7,
+      "y": 7
     },
     "emitterMode": 1,
     "gravity": {
@@ -145,15 +145,15 @@
     "tangentialAccelVar": 65.79000091552734,
     "radialAccel": -671.0499877929688,
     "radialAccelVar": 65.79000091552734,
-    "rotationIsDir": false,
-    "startRadius": 8,
-    "startRadiusVar": 4,
-    "endRadius": 20,
-    "endRadiusVar": 15,
-    "rotatePerS": 20,
-    "rotatePerSVar": 10,
+    "rotationIsDir": true,
+    "startRadius": 30,
+    "startRadiusVar": -100,
+    "endRadius": 0,
+    "endRadiusVar": 0,
+    "rotatePerS": 0,
+    "rotatePerSVar": 0,
     "playOnLoad": true,
-    "autoRemoveOnFinish": true,
+    "autoRemoveOnFinish": false,
     "_preview": true,
     "preview": true,
     "_custom": true,
@@ -162,16 +162,16 @@
       "__expectedType__": "cc.ParticleAsset"
     },
     "_spriteFrame": {
-      "__uuid__": "f12a23c4-b924-4322-a260-3d982428f1e8@f9941",
+      "__uuid__": "20835ba4-6145-4fbc-a58a-051ce700aa3e@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
-    "_totalParticles": 12,
+    "_totalParticles": 200,
     "_startColor": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 126,
-      "b": 25,
-      "a": 255
+      "r": 203,
+      "g": 201,
+      "b": 86,
+      "a": 163
     },
     "_startColorVar": {
       "__type__": "cc.Color",
@@ -182,10 +182,10 @@
     },
     "_endColor": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 126,
-      "b": 25,
-      "a": 255
+      "r": 174,
+      "g": 162,
+      "b": 20,
+      "a": 214
     },
     "_endColorVar": {
       "__type__": "cc.Color",
@@ -199,7 +199,7 @@
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "4dlNA+X4JLrLTJ8HsemTGI"
+    "fileId": "3fmvjSVgNIQqMYa4WsUbqu"
   },
   {
     "__type__": "cc.PrefabInfo",
@@ -209,7 +209,7 @@
     "asset": {
       "__id__": 0
     },
-    "fileId": "d3ieR24nNCHKjamHaxsjYW",
+    "fileId": "85K7xsaHZEzLXfrnkPYrc3",
     "instance": null,
     "targetOverrides": null
   }

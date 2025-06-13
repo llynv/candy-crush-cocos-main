@@ -1,7 +1,7 @@
 [
   {
     "__type__": "cc.Prefab",
-    "_name": "Pop",
+    "_name": "BombEffect",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_native": "",
@@ -13,7 +13,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Pop",
+    "_name": "BombEffect",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": null,
@@ -32,8 +32,8 @@
     },
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 0,
-      "y": 0,
+      "x": 35.459,
+      "y": -21.532,
       "z": 0
     },
     "_lrot": {
@@ -109,20 +109,20 @@
       "b": 255,
       "a": 255
     },
-    "duration": 0.2,
-    "emissionRate": 2000,
-    "life": 0.4,
-    "lifeVar": 0.2,
-    "angle": 360,
-    "angleVar": 360,
-    "startSize": 12,
-    "startSizeVar": 8,
-    "endSize": 8,
-    "endSizeVar": 6,
-    "startSpin": -47.369998931884766,
-    "startSpinVar": 0,
-    "endSpin": -47.369998931884766,
-    "endSpinVar": -142.11000061035156,
+    "duration": -1,
+    "emissionRate": 200,
+    "life": 0.1,
+    "lifeVar": 0.1,
+    "angle": 90,
+    "angleVar": 30,
+    "startSize": 8,
+    "startSizeVar": 2,
+    "endSize": 28,
+    "endSizeVar": 8,
+    "startSpin": 0,
+    "startSpinVar": 90,
+    "endSpin": 0,
+    "endSpinVar": 90,
     "sourcePos": {
       "__type__": "cc.Vec2",
       "x": 0,
@@ -130,30 +130,30 @@
     },
     "posVar": {
       "__type__": "cc.Vec2",
-      "x": 100,
-      "y": 4
+      "x": 12,
+      "y": 3
     },
-    "emitterMode": 1,
+    "emitterMode": 0,
     "gravity": {
       "__type__": "cc.Vec2",
-      "x": 0.25,
-      "y": 0.8600000143051147
+      "x": 0,
+      "y": 80
     },
-    "speed": 0,
-    "speedVar": 190.7899932861328,
-    "tangentialAccel": -92.11000061035156,
-    "tangentialAccelVar": 65.79000091552734,
-    "radialAccel": -671.0499877929688,
-    "radialAccelVar": 65.79000091552734,
+    "speed": 220,
+    "speedVar": 30,
+    "tangentialAccel": 0,
+    "tangentialAccelVar": 8,
+    "radialAccel": 0,
+    "radialAccelVar": 0,
     "rotationIsDir": false,
-    "startRadius": 8,
+    "startRadius": 6,
     "startRadiusVar": 4,
-    "endRadius": 20,
-    "endRadiusVar": 15,
+    "endRadius": 8,
+    "endRadiusVar": 6,
     "rotatePerS": 20,
     "rotatePerSVar": 10,
     "playOnLoad": true,
-    "autoRemoveOnFinish": true,
+    "autoRemoveOnFinish": false,
     "_preview": true,
     "preview": true,
     "_custom": true,
@@ -165,7 +165,7 @@
       "__uuid__": "f12a23c4-b924-4322-a260-3d982428f1e8@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
-    "_totalParticles": 12,
+    "_totalParticles": 150,
     "_startColor": {
       "__type__": "cc.Color",
       "r": 255,
@@ -194,7 +194,7 @@
       "b": 0,
       "a": 0
     },
-    "_positionType": 0,
+    "_positionType": 1,
     "_id": ""
   },
   {

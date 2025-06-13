@@ -1,103 +1,91 @@
-import { _decorator, Component } from 'cc';
+import { _decorator, Component, Vec3 } from 'cc';
 import { Tile } from '../Tile';
+import { GameConfig, PatternShape } from '../../constants/GameConfig';
+import { SpecialTileType } from '../../constants/SpecialTileConfig';
 
 const { ccclass } = _decorator;
 
 @ccclass('MatchManager')
 export class MatchManager extends Component {
   public findMatches(tileGrid: (Tile | undefined)[][]): Tile[][] {
-    let matches: Tile[][] = [];
-    let groups: Tile[] = [];
+    const matches: Tile[][] = [];
+    const processedTiles = new Set<Tile>();
 
-    for (let y = 0; y < tileGrid.length; y++) {
-      let tempArray = tileGrid[y];
-      groups = [];
-      for (let x = 0; x < tempArray.length; x++) {
-        if (x < tempArray.length - 2) {
-          if (tileGrid[y][x] && tileGrid[y][x + 1] && tileGrid[y][x + 2]) {
-            if (
-              tileGrid[y][x]!.getTileType() === tileGrid[y][x + 1]!.getTileType() &&
-              tileGrid[y][x + 1]!.getTileType() === tileGrid[y][x + 2]!.getTileType()
-            ) {
-              if (groups.length > 0) {
-                if (groups.indexOf(tileGrid[y][x]!) === -1) {
-                  matches.push(groups);
-                  groups = [];
-                }
-              }
+    this.findShapeMatches(tileGrid, matches, processedTiles);
 
-              if (groups.indexOf(tileGrid[y][x]!) === -1) {
-                groups.push(tileGrid[y][x]!);
-              }
-
-              if (groups.indexOf(tileGrid[y][x + 1]!) === -1) {
-                groups.push(tileGrid[y][x + 1]!);
-              }
-
-              if (groups.indexOf(tileGrid[y][x + 2]!) === -1) {
-                groups.push(tileGrid[y][x + 2]!);
-              }
-            }
-          }
-        }
-      }
-
-      if (groups.length > 0) {
-        matches.push(groups);
-      }
-    }
-
-    for (let j = 0; j < tileGrid.length; j++) {
-      const tempArr = tileGrid[j];
-      groups = [];
-      for (let i = 0; i < tempArr.length; i++) {
-        if (i < tempArr.length - 2)
-          if (tileGrid[i][j] && tileGrid[i + 1][j] && tileGrid[i + 2][j]) {
-            if (
-              tileGrid[i][j]!.getTileType() === tileGrid[i + 1][j]!.getTileType() &&
-              tileGrid[i + 1][j]!.getTileType() === tileGrid[i + 2][j]!.getTileType()
-            ) {
-              if (groups.length > 0) {
-                if (groups.indexOf(tileGrid[i][j]!) === -1) {
-                  matches.push(groups);
-                  groups = [];
-                }
-              }
-
-              if (groups.indexOf(tileGrid[i][j]!) === -1) {
-                groups.push(tileGrid[i][j]!);
-              }
-              if (groups.indexOf(tileGrid[i + 1][j]!) === -1) {
-                groups.push(tileGrid[i + 1][j]!);
-              }
-              if (groups.indexOf(tileGrid[i + 2][j]!) === -1) {
-                groups.push(tileGrid[i + 2][j]!);
-              }
-            }
-          }
-      }
-      if (groups.length > 0) matches.push(groups);
-    }
+    console.log('matches', matches);
 
     return matches;
   }
 
-  public hasMatches(tileGrid: (Tile | undefined)[][]): boolean {
-    return this.findMatches(tileGrid).length > 0;
+  private findShapeMatches(
+    tileGrid: (Tile | undefined)[][],
+    matches: Tile[][],
+    processedTiles: Set<Tile>
+  ): void {
+    for (let matchSize = 5; matchSize >= 3; matchSize--) {
+      const matchPatterns = PatternShape.filter(pattern => pattern.shape.length === matchSize);
+      this.findShapeMatchesByPatterns(tileGrid, matches, processedTiles, matchPatterns);
+    }
   }
 
-  public removeDuplicateMatches(matches: Tile[][]): Tile[][] {
-    const uniqueMatches: Tile[][] = [];
-    const processedTiles = new Set<Tile>();
+  private findShapeMatchesByPatterns(
+    tileGrid: (Tile | undefined)[][],
+    matches: Tile[][],
+    processedTiles: Set<Tile>,
+    matchPatterns: { name: string; shape: Vec3[] }[]
+  ): void {
+    for (let y = 0; y < tileGrid.length; y++) {
+      for (let x = 0; x < tileGrid[y].length; x++) {
+        const centerTile = tileGrid[y][x];
+        if (
+          !centerTile ||
+          processedTiles.has(centerTile) ||
+          centerTile.getSpecialType() === SpecialTileType.RAINBOW
+        ) {
+          continue;
+        }
 
-    for (const match of matches) {
-      const newMatch = match.filter(tile => !processedTiles.has(tile));
-      if (newMatch.length >= 3) {
-        uniqueMatches.push(newMatch);
-        newMatch.forEach(tile => processedTiles.add(tile));
+        for (const pattern of matchPatterns) {
+          const match = this.findPatternMatch(tileGrid, x, y, pattern, processedTiles);
+          if (match) {
+            matches.push(match);
+            match.forEach(tile => processedTiles.add(tile));
+          }
+        }
       }
     }
+  }
 
-    return uniqueMatches;
+  private isInGrid(x: number, y: number): boolean {
+    return x >= 0 && x < GameConfig.GridWidth && y >= 0 && y < GameConfig.GridHeight;
+  }
+
+  private findPatternMatch(
+    tileGrid: (Tile | undefined)[][],
+    x: number,
+    y: number,
+    pattern: { name: string; shape: Vec3[] },
+    processedTiles: Set<Tile>
+  ): Tile[] | null {
+    const match: Tile[] = [];
+    const shape = pattern.shape;
+    const tileType = tileGrid[y][x]?.getTileType();
+    for (const offset of shape) {
+      const newX = x + offset.x;
+      const newY = y + offset.y;
+      if (!this.isInGrid(newX, newY)) return null;
+      const tile = tileGrid[newY][newX];
+      if (
+        !tile ||
+        processedTiles.has(tile) ||
+        tile.getTileType() !== tileType ||
+        tile.isRainbowTile()
+      )
+        return null;
+      match.push(tile);
+    }
+
+    return match.length >= pattern.shape.length ? match : null;
   }
 }

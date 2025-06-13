@@ -1,7 +1,7 @@
 [
   {
     "__type__": "cc.Prefab",
-    "_name": "Pop",
+    "_name": "Shockwave",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_native": "",
@@ -13,7 +13,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Pop",
+    "_name": "Shockwave",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": null,
@@ -85,7 +85,7 @@
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "72a9mNYmVG47fX576CuvZ4"
+    "fileId": "dfoyF7EFNOAoXUaWpT9DXp"
   },
   {
     "__type__": "cc.ParticleSystem2D",
@@ -110,19 +110,19 @@
       "a": 255
     },
     "duration": 0.2,
-    "emissionRate": 2000,
-    "life": 0.4,
+    "emissionRate": 800,
+    "life": 0.25,
     "lifeVar": 0.2,
-    "angle": 360,
+    "angle": 0,
     "angleVar": 360,
-    "startSize": 12,
-    "startSizeVar": 8,
-    "endSize": 8,
-    "endSizeVar": 6,
-    "startSpin": -47.369998931884766,
-    "startSpinVar": 0,
-    "endSpin": -47.369998931884766,
-    "endSpinVar": -142.11000061035156,
+    "startSize": 60,
+    "startSizeVar": 40,
+    "endSize": 90,
+    "endSizeVar": 80,
+    "startSpin": 0,
+    "startSpinVar": 180,
+    "endSpin": 1080,
+    "endSpinVar": 720,
     "sourcePos": {
       "__type__": "cc.Vec2",
       "x": 0,
@@ -130,30 +130,30 @@
     },
     "posVar": {
       "__type__": "cc.Vec2",
-      "x": 100,
-      "y": 4
+      "x": 3,
+      "y": 7
     },
-    "emitterMode": 1,
+    "emitterMode": 0,
     "gravity": {
       "__type__": "cc.Vec2",
-      "x": 0.25,
-      "y": 0.8600000143051147
+      "x": 0.15,
+      "y": 0
     },
-    "speed": 0,
-    "speedVar": 190.7899932861328,
-    "tangentialAccel": -92.11000061035156,
-    "tangentialAccelVar": 65.79000091552734,
-    "radialAccel": -671.0499877929688,
-    "radialAccelVar": 65.79000091552734,
+    "speed": 150,
+    "speedVar": 100,
+    "tangentialAccel": 0,
+    "tangentialAccelVar": 80,
+    "radialAccel": 400,
+    "radialAccelVar": 150,
     "rotationIsDir": false,
-    "startRadius": 8,
-    "startRadiusVar": 4,
-    "endRadius": 20,
-    "endRadiusVar": 15,
-    "rotatePerS": 20,
-    "rotatePerSVar": 10,
+    "startRadius": 100,
+    "startRadiusVar": 0,
+    "endRadius": 0,
+    "endRadiusVar": 0,
+    "rotatePerS": 0,
+    "rotatePerSVar": 0,
     "playOnLoad": true,
-    "autoRemoveOnFinish": true,
+    "autoRemoveOnFinish": false,
     "_preview": true,
     "preview": true,
     "_custom": true,
@@ -162,44 +162,44 @@
       "__expectedType__": "cc.ParticleAsset"
     },
     "_spriteFrame": {
-      "__uuid__": "f12a23c4-b924-4322-a260-3d982428f1e8@f9941",
+      "__uuid__": "24c419ea-63a8-4ea1-a9d0-7fc469489bbc@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
-    "_totalParticles": 12,
+    "_totalParticles": 500,
     "_startColor": {
       "__type__": "cc.Color",
       "r": 255,
-      "g": 126,
-      "b": 25,
+      "g": 255,
+      "b": 100,
       "a": 255
     },
     "_startColorVar": {
       "__type__": "cc.Color",
       "r": 0,
-      "g": 0,
-      "b": 0,
+      "g": 50,
+      "b": 100,
       "a": 0
     },
     "_endColor": {
       "__type__": "cc.Color",
       "r": 255,
-      "g": 126,
-      "b": 25,
-      "a": 255
+      "g": 100,
+      "b": 200,
+      "a": 0
     },
     "_endColorVar": {
       "__type__": "cc.Color",
-      "r": 0,
-      "g": 0,
-      "b": 0,
+      "r": 100,
+      "g": 100,
+      "b": 55,
       "a": 0
     },
-    "_positionType": 0,
+    "_positionType": 1,
     "_id": ""
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "4dlNA+X4JLrLTJ8HsemTGI"
+    "fileId": "9dF0JXrWZNJZEq9LgljtA0"
   },
   {
     "__type__": "cc.PrefabInfo",
@@ -209,7 +209,7 @@
     "asset": {
       "__id__": 0
     },
-    "fileId": "d3ieR24nNCHKjamHaxsjYW",
+    "fileId": "54t0ZptWhIq46mmglm5/tI",
     "instance": null,
     "targetOverrides": null
   }
