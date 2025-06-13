@@ -103,7 +103,7 @@ export class AnimationManager extends Component {
       }
     });
 
-    const baseFallDuration = 0.3;
+    const baseFallDuration = 0.1;
     const animationPromises: Promise<void>[] = [];
 
     fallTasks.forEach((task, index) => {
