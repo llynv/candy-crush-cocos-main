@@ -454,10 +454,18 @@ export default class GameManager extends Singleton {
             match.length === 4 ? SpecialTileType.BOMB : SpecialTileType.RAINBOW
           );
           combineCallbacks.push(async () => {
+            const combinedTiles = match.filter(tile => tile !== centerTile);
             await this.specialTileManager!.createSpecialTile(
               centerTile,
               match.length === 4 ? SpecialTileType.BOMB : SpecialTileType.RAINBOW,
-              match.filter(tile => tile !== centerTile)
+              combinedTiles,
+              () => {
+                combinedTiles.forEach(tile => {
+                  if (tile.node && tile.node.isValid) {
+                    tile.node.destroy();
+                  }
+                });
+              }
             );
           });
 
@@ -469,12 +477,6 @@ export default class GameManager extends Singleton {
             this.boardManager!.clearTileAt(tileCoords.get(tile)!.x, tileCoords.get(tile)!.y);
           }
 
-          match.forEach(tile => {
-            if (tile.isSpecial() && !tile.isRainbowTile()) {
-              specialTiles.add(tile);
-            }
-          });
-
           ProgressManager.getInstance().addPendingScore(match.length, match.length);
         } else {
           match.forEach(tile => matchTiles.add(tile));
@@ -482,7 +484,11 @@ export default class GameManager extends Singleton {
         }
       }
 
-      await Promise.all(combineCallbacks.map(callback => callback()));
+      if (combineCallbacks.length !== 0) {
+        await Promise.all(combineCallbacks.map(callback => callback()));
+        resolve();
+        return;
+      }
 
       const destroyCallbacks: Array<() => void> = [];
 
@@ -531,45 +537,15 @@ export default class GameManager extends Singleton {
 
           const ranbowSwapCount = this.swappedTiles.filter(t => t.isRainbowTile()).length;
 
-          if (isPlayerSwap && ranbowSwapCount > 0) {
-            if (ranbowSwapCount === 2) {
-              console.log('resolveDestroyAllForRainbow');
-              await this.animationManager!.animateDoubleRainbow(
-                this.swappedTiles[0],
-                this.swappedTiles[1],
-                this.swappedTiles
-              );
-              await this.resolveDestroyAllForRainbow(this.swappedTiles);
-              resolve();
-              return;
-            } else {
-              await this.animationManager!.animateRainbowSwapToType(
-                tile,
-                swapTile.getTileType(),
-                affectedTiles
-              );
-
-              for (const tile of affectedTiles) {
-                if (tile.isSpecial()) {
-                  this.particleEffectManager!.playSpecialTileDestroyEffect(
-                    tile.node.getWorldPosition(),
-                    tile.node.parent!,
-                    tile.getSpecialType()
-                  );
-                }
-
-                this.boardManager!.clearTileAt(tileCoords.get(tile)!.x, tileCoords.get(tile)!.y);
-                tile.node.destroy();
-              }
-
-              const rainbowTile = this.swappedTiles.find(t => t.isRainbowTile())!;
-              const coords = tileCoords.get(rainbowTile)!;
-              this.boardManager!.clearTileAt(coords.x, coords.y);
-              rainbowTile.node.destroy();
-
-              resolve();
-              return;
-            }
+          if (isPlayerSwap && ranbowSwapCount == 2) {
+            await this.animationManager!.animateDoubleRainbow(
+              this.swappedTiles[0],
+              this.swappedTiles[1],
+              this.swappedTiles
+            );
+            await this.resolveDestroyAllForRainbow(this.swappedTiles);
+            resolve();
+            return;
           }
 
           if (tile.isRainbowTile()) {
@@ -698,35 +674,50 @@ export default class GameManager extends Singleton {
       this.gameOverPopup.setCallback(() => this.startNewGame());
     }
 
-    this.setupPauseButtonAnimation();
-    this.pauseButton?.node.on(Button.EventType.CLICK, this.togglePause, this);
+    if (this.pauseButton && this.pauseButton.node) {
+      this.pauseButton.node.off(Button.EventType.CLICK);
+
+      this.pauseButton.node.on(Button.EventType.CLICK, this.togglePause, this);
+
+      this.setupPauseButtonAnimation();
+    }
   }
   /**
    * Setup pause button animations
    */
   private setupPauseButtonAnimation(): void {
-    if (!this.pauseButton) return;
+    if (!this.pauseButton || !this.pauseButton.node || !this.pauseButton.node.isValid) return;
 
     const buttonNode = this.pauseButton.node;
     const originalScale = buttonNode.scale.clone();
 
+    // Remove any existing event listeners to prevent duplicates
+    buttonNode.off(Node.EventType.MOUSE_ENTER);
+    buttonNode.off(Node.EventType.MOUSE_LEAVE);
+    buttonNode.off(Node.EventType.TOUCH_START);
+    buttonNode.off(Node.EventType.TOUCH_END);
+
     buttonNode.on(Node.EventType.MOUSE_ENTER, () => {
+      if (!buttonNode.isValid) return;
       tween(buttonNode)
         .to(0.1, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
         .start();
     });
 
     buttonNode.on(Node.EventType.MOUSE_LEAVE, () => {
+      if (!buttonNode.isValid) return;
       tween(buttonNode).to(0.1, { scale: originalScale }, { easing: 'quadOut' }).start();
     });
 
     buttonNode.on(Node.EventType.TOUCH_START, () => {
+      if (!buttonNode.isValid) return;
       tween(buttonNode)
         .to(0.05, { scale: new Vec3(0.95, 0.95, 1) }, { easing: 'quadOut' })
         .start();
     });
 
     buttonNode.on(Node.EventType.TOUCH_END, () => {
+      if (!buttonNode.isValid) return;
       tween(buttonNode).to(0.1, { scale: originalScale }, { easing: 'backOut' }).start();
     });
   }
@@ -756,7 +747,10 @@ export default class GameManager extends Singleton {
 
     console.log('Game paused');
 
+    // Time.timeScale = 0;
+
     if (this.pausePopup) {
+      console.log('show pause popup');
       this.pausePopup.show();
     }
   }

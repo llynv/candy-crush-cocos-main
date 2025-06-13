@@ -299,6 +299,7 @@ export class ParticleEffectManager extends Component {
 
     const effectNode = instantiate(effectPrefab);
     effectNode.setParent(tile.node);
+    tile.node.addChild(effectNode);
     effectNode.setPosition(0, -20, 0);
 
     const particleSystem = effectNode.getComponent(ParticleSystem2D);

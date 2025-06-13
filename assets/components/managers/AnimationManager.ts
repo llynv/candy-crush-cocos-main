@@ -206,90 +206,6 @@ export class AnimationManager extends Component {
   }
 
   /**
-   * Destruction animation - shrink and fade out
-   */
-  public animateDestruction(): Promise<void> {
-    return new Promise(resolve => {
-      if (this.isAnimating) {
-        resolve();
-        return;
-      }
-
-      this.isAnimating = true;
-
-      const bounceScale = this.originalScale
-        .clone()
-        .multiplyScalar(CONFIG.DESTRUCTION_CONFIG.bounceMultiplier!);
-
-      tween(this.node)
-        .to(0.1, { scale: bounceScale }, { easing: 'quadOut' })
-        .to(
-          CONFIG.DESTRUCTION_CONFIG.duration!,
-          {
-            scale: new Vec3(0, 0, 0),
-          },
-          {
-            easing: CONFIG.DESTRUCTION_CONFIG.easing,
-          }
-        )
-        .call(() => {
-          this.isAnimating = false;
-          resolve();
-        })
-        .start();
-
-      if (this.tile?.getSprite()) {
-        const sprite = this.tile.getSprite()!;
-        const transparentColor = new Color(
-          COLOR_PRESETS.TRANSPARENT.r,
-          COLOR_PRESETS.TRANSPARENT.g,
-          COLOR_PRESETS.TRANSPARENT.b,
-          COLOR_PRESETS.TRANSPARENT.a
-        );
-
-        tween(sprite)
-          .delay(0.1)
-          .to(CONFIG.DESTRUCTION_CONFIG.duration!, {
-            color: transparentColor,
-          })
-          .start();
-      }
-    });
-  }
-
-  /**
-   * Spawn animation - scale up from zero with bounce
-   */
-  public animateSpawn(): Promise<void> {
-    return new Promise(resolve => {
-      if (this.isAnimating) {
-        resolve();
-        return;
-      }
-
-      this.isAnimating = true;
-
-      this.node.scale = new Vec3(0, 0, 0);
-
-      tween(this.node)
-        .to(
-          CONFIG.SPAWN_CONFIG.duration!,
-          {
-            scale: this.originalScale,
-          },
-          {
-            easing: CONFIG.SPAWN_CONFIG.easing,
-          }
-        )
-        .call(() => {
-          this.isAnimating = false;
-          resolve();
-        })
-        .start();
-    });
-  }
-
-  /**
    * Bounce animation for feedback (invalid moves, etc.) - quick scale bounce
    */
   public animateBounce(): Promise<void> {
@@ -591,182 +507,6 @@ export class AnimationManager extends Component {
     await Promise.all(returnPromises);
   }
 
-  public async animateSpecialTileActivation(
-    specialTile: Tile,
-    affectedTiles: Tile[]
-  ): Promise<void> {
-    if (!specialTile || !specialTile.node || !specialTile.node.isValid) return;
-
-    const specialType = specialTile.getSpecialType();
-
-    switch (specialType) {
-      case 'bomb':
-        await this.animateBombExplosion(specialTile, affectedTiles);
-        break;
-      case 'rainbow':
-        await this.animateRainbowBurst(specialTile, affectedTiles);
-        break;
-    }
-  }
-
-  private async animateBombExplosion(bombTile: Tile, affectedTiles: Tile[]): Promise<void> {
-    if (!bombTile.node || !bombTile.node.isValid) return;
-
-    tween(bombTile.node)
-      .to(0.12, { scale: new Vec3(1.8, 1.8, 1) }, { easing: 'backOut' })
-      .to(0.18, { scale: new Vec3(0, 0, 1) }, { easing: 'sineIn' })
-      .start();
-
-    const particleManager = this.node.getComponent(ParticleEffectManager);
-    if (particleManager && bombTile.node.parent) {
-      console.log('play explosion effect');
-      particleManager.playExplosionEffect(bombTile.node.getWorldPosition(), bombTile.node.parent);
-
-      const positions = affectedTiles.map(tile => tile.node.getWorldPosition());
-      particleManager.playMultipleEffects(positions, 'shockwave', bombTile.node.parent);
-    }
-
-    const explosionPromises = affectedTiles.map((tile, index) => {
-      return new Promise<void>(resolve => {
-        if (!tile.node || !tile.node.isValid) {
-          resolve();
-          return;
-        }
-
-        const delay = index * 0.05;
-
-        tween(tile.node)
-          .delay(delay)
-          .to(0.1, { scale: new Vec3(1.3, 1.3, 1) }, { easing: 'quadOut' })
-          .to(0.15, { scale: new Vec3(0, 0, 1) }, { easing: 'quadIn' })
-          .call(() => resolve())
-          .start();
-      });
-    });
-
-    await Promise.all(explosionPromises);
-  }
-
-  private async animateRainbowBurst(rainbowTile: Tile, affectedTiles: Tile[]): Promise<void> {
-    if (!rainbowTile.node || !rainbowTile.node.isValid) return;
-
-    const rainbowColors = [
-      new Color(255, 0, 0, 255),
-      new Color(255, 127, 0, 255),
-      new Color(255, 255, 0, 255),
-      new Color(0, 255, 0, 255),
-      new Color(0, 0, 255, 255),
-      new Color(75, 0, 130, 255),
-      new Color(148, 0, 211, 255),
-    ];
-
-    const sprite = rainbowTile.getSprite();
-    if (sprite) {
-      for (let i = 0; i < 5; i++) {
-        const color = rainbowColors[i % rainbowColors.length];
-        tween(sprite).to(0.1, { color }).start();
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
-
-    const burstPromises = affectedTiles.map((tile, index) => {
-      return new Promise<void>(resolve => {
-        if (!tile.node || !tile.node.isValid) {
-          resolve();
-          return;
-        }
-
-        const delay = index * 0.03;
-        const targetColor = rainbowColors[index % rainbowColors.length];
-        const tileSprite = tile.getSprite();
-
-        if (tileSprite) {
-          tween(tileSprite).delay(delay).to(0.2, { color: targetColor }).start();
-        }
-
-        tween(tile.node)
-          .delay(delay)
-          .to(0.1, { scale: new Vec3(1.2, 1.2, 1) }, { easing: 'quadOut' })
-          .to(0.2, { scale: new Vec3(0, 0, 1) }, { easing: 'quadIn' })
-          .call(() => resolve())
-          .start();
-      });
-    });
-
-    await Promise.all(burstPromises);
-  }
-
-  public async animateTileCombination(matchedTiles: Tile[], centerTile: Tile): Promise<void> {
-    if (!centerTile || !centerTile.node || !centerTile.node.isValid) return;
-
-    const centerPosition = centerTile.node.position.clone();
-    const animationPromises: Promise<void>[] = [];
-
-    for (const tile of matchedTiles) {
-      if (tile === centerTile || !tile.node || !tile.node.isValid) continue;
-
-      const promise = new Promise<void>(resolve => {
-        tween(tile.node)
-          .to(
-            0.4,
-            {
-              position: centerPosition,
-              scale: new Vec3(0.8, 0.8, 1),
-            },
-            {
-              easing: 'quadInOut',
-            }
-          )
-          .to(
-            0.1,
-            {
-              scale: new Vec3(0, 0, 1),
-            },
-            {
-              easing: 'quadIn',
-            }
-          )
-          .call(() => {
-            console.log('destroy tile', tile);
-            tile.node.destroy();
-            resolve();
-          })
-          .start();
-      });
-
-      animationPromises.push(promise);
-    }
-
-    const centerPromise = new Promise<void>(resolve => {
-      tween(centerTile.node)
-        .to(0.2, { scale: new Vec3(1.2, 1.2, 1) }, { easing: 'quadOut' })
-        .to(0.2, { scale: new Vec3(1.0, 1.0, 1) }, { easing: 'quadIn' })
-        .call(() => {
-          resolve();
-        })
-        .start();
-    });
-
-    animationPromises.push(centerPromise);
-
-    await Promise.all(animationPromises);
-  }
-
-  public async animateCombine(
-    sourceTile: Tile,
-    targetTile: Tile,
-    callback?: () => void,
-    resolve?: () => void
-  ): Promise<void> {
-    tween(sourceTile.node)
-      .to(0.15, { position: targetTile.node.getPosition() }, { easing: 'quadOut' })
-      .call(() => {
-        callback?.();
-        resolve?.();
-      })
-      .start();
-  }
-
   /**
    * Double rainbow combination – two rainbow tiles fly up, merge and unleash a shock-wave.
    */
@@ -830,21 +570,29 @@ export class AnimationManager extends Component {
         .start();
     });
 
-    const hitPromises = affectedTiles.map((tile, idx) => {
-      if (!tile.node?.isValid) return Promise.resolve();
-
-      return new Promise<void>(resolve => {
-        const delay = idx * 0.012;
+    const flyUpRapid = (tile: Tile) =>
+      new Promise<void>(resolve => {
         tween(tile.node)
-          .delay(delay)
-          .to(0.12, { scale: new Vec3(1.25, 1.25, 1) }, { easing: 'quadOut' })
-          .to(0.18, { scale: new Vec3(0, 0, 1) }, { easing: 'quadIn' })
+          .to(
+            0.25,
+            { position: new Vec3(tile.node.position.x, tile.node.position.y + 120, 0) },
+            { easing: 'quadOut' }
+          )
           .call(() => resolve())
           .start();
       });
-    });
 
-    await Promise.all(hitPromises);
+    await Promise.all([flyUpRapid(rainbowOne), flyUpRapid(rainbowTwo)]);
+
+    const flyDownRapid = (tile: Tile) =>
+      new Promise<void>(resolve => {
+        tween(tile.node)
+          .to(0.25, { position: new Vec3(pos2Local.x, pos2Local.y, 0) }, { easing: 'quadOut' })
+          .call(() => resolve())
+          .start();
+      });
+
+    await Promise.all([flyDownRapid(rainbowOne), flyDownRapid(rainbowTwo)]);
   }
 
   /**
@@ -1045,5 +793,20 @@ export class AnimationManager extends Component {
     if (particleManager && rainbowTile.node.parent) {
       particleManager.playSparkleEffect(rainbowPos, rainbowTile.node.parent);
     }
+  }
+
+  public async animateCombine(
+    sourceTile: Tile,
+    targetTile: Tile,
+    callback?: () => void,
+    resolve?: () => void
+  ): Promise<void> {
+    tween(sourceTile.node)
+      .to(0.15, { position: targetTile.node.getPosition() }, { easing: 'quadOut' })
+      .call(() => {
+        callback?.();
+        resolve?.();
+      })
+      .start();
   }
 }

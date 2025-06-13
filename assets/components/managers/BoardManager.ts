@@ -22,7 +22,7 @@ export class BoardManager extends Component {
 
   private virtualGrid: (Tile | undefined)[][] = [];
   private tileCoords: Map<Tile, GridPosition> = new Map();
-  private maxDifference = 4;
+  private maxDifference = 2;
 
   private readonly VIRTUAL_GRID_HEIGHT = GameConfig.GridHeight;
 

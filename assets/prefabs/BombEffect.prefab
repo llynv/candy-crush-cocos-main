@@ -33,7 +33,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 35.459,
-      "y": -6.545,
+      "y": -21.532,
       "z": 0
     },
     "_lrot": {
@@ -111,10 +111,10 @@
     },
     "duration": -1,
     "emissionRate": 200,
-    "life": 0.15,
-    "lifeVar": 0.15,
+    "life": 0.1,
+    "lifeVar": 0.1,
     "angle": 90,
-    "angleVar": 40,
+    "angleVar": 30,
     "startSize": 8,
     "startSizeVar": 2,
     "endSize": 28,
@@ -165,7 +165,7 @@
       "__uuid__": "f12a23c4-b924-4322-a260-3d982428f1e8@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
-    "_totalParticles": 240,
+    "_totalParticles": 150,
     "_startColor": {
       "__type__": "cc.Color",
       "r": 255,

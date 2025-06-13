@@ -31,12 +31,20 @@ export class SpecialTileManager extends Component {
   ): Promise<void> {
     if (!souceTile || !souceTile.node || !souceTile.node.isValid) return;
 
-    console.log('createSpecialTile', souceTile, specialType, match);
-
     souceTile.setSpecialType(specialType!);
     this.particleEffectManager?.createTileParticleEffect(souceTile, specialType);
 
     const combinePromises = Array<Promise<void>>();
+
+    const validCombination = match.filter(tile => tile.node && tile.node.isValid).length;
+    let currentValidCombination = 0;
+
+    const onTileDestroyed = () => {
+      currentValidCombination++;
+      if (currentValidCombination >= validCombination) {
+        callback?.();
+      }
+    };
 
     for (const tile of match) {
       if (!tile || !tile.node || !tile.node.isValid) {
@@ -45,10 +53,7 @@ export class SpecialTileManager extends Component {
 
       combinePromises.push(
         tile.playCombineEffect(souceTile, () => {
-          callback?.();
-          if (tile.node && tile.node.isValid) {
-            tile.node.destroy();
-          }
+          onTileDestroyed();
         })
       );
     }

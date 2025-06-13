@@ -1,31 +1,37 @@
 {
-    "name": "candy-crush-cocos",
-    "uuid": "98b29517-2f84-4a00-bb47-5575a479eb57",
-    "creator": {
-        "version": "3.8.6"
-    },
-    "prettier": {
-      "printWidth": 100,
-      "tabWidth": 2,
-      "useTabs": false,
-      "semi": true,
-      "singleQuote": true,
-      "quoteProps": "as-needed",
-      "jsxSingleQuote": true,
-      "trailingComma": "es5",
-      "bracketSpacing": true,
-      "bracketSameLine": false,
-      "arrowParens": "avoid",
-      "endOfLine": "lf",
-      "embeddedLanguageFormatting": "auto",
-      "htmlWhitespaceSensitivity": "css",
-      "insertPragma": false,
-      "requirePragma": false,
-      "proseWrap": "preserve",
-      "rangeStart": 0,
-      "vueIndentScriptAndStyle": false
-    },
-    "devDependencies": {
-        "prettier": "^3.5.3"
-    }
+  "name": "candy-crush-cocos",
+  "uuid": "98b29517-2f84-4a00-bb47-5575a479eb57",
+  "creator": {
+    "version": "3.8.6"
+  },
+  "scripts": {
+    "deploy": "gh-pages -d build/release"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "tabWidth": 2,
+    "useTabs": false,
+    "semi": true,
+    "singleQuote": true,
+    "quoteProps": "as-needed",
+    "jsxSingleQuote": true,
+    "trailingComma": "es5",
+    "bracketSpacing": true,
+    "bracketSameLine": false,
+    "arrowParens": "avoid",
+    "endOfLine": "lf",
+    "embeddedLanguageFormatting": "auto",
+    "htmlWhitespaceSensitivity": "css",
+    "insertPragma": false,
+    "requirePragma": false,
+    "proseWrap": "preserve",
+    "rangeStart": 0,
+    "vueIndentScriptAndStyle": false
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3"
+  },
+  "dependencies": {
+    "gh-pages": "^6.3.0"
+  }
 }
