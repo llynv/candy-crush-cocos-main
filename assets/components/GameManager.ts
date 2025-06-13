@@ -50,6 +50,7 @@ export default class GameManager extends Singleton {
   private firstSelectedTile: Tile | undefined = undefined;
   private secondSelectedTile: Tile | undefined = undefined;
   private swappedTiles: Tile[] = [];
+  private triggeredSpecialTiles: Tile[] = [];
 
   private isGamePaused = false;
   private isGameOver = false;
@@ -445,10 +446,51 @@ export default class GameManager extends Singleton {
 
       const combineCallbacks: Array<() => void> = [];
       const specialTiles: Set<Tile> = new Set();
+      const specialQueue: Tile[] = [];
+      const priorityDestroyTiles: Set<Tile> = new Set();
 
       for (const match of matches) {
-        if (match.length >= 4 && match.every(tile => !tile.isRainbowTile())) {
-          const centerTile = match[0];
+        const isMatchSpecial = match.length >= 4 && match.every(tile => !tile.isRainbowTile());
+        const centerTile = match[0];
+
+        if (isMatchSpecial) {
+          //     for (const tile of match) {
+          //       if (tile.isSpecial()) {
+          //         specialTiles.add(tile);
+          //         specialQueue.push(tile);
+          //       }
+          //     }
+
+          //     while (specialQueue.length > 0) {
+          //       const tile = specialQueue.shift();
+          //       if (!tile) break;
+
+          //       console.log('triggered special tile', tile.getSpecialType());
+
+          //       const affectedTiles = this.specialTileManager!.activateSpecialTile(
+          //         tile,
+          //         tile,
+          //         tileCoords.get(tile)!,
+          //         false
+          //       );
+
+          //       for (const affectedTile of affectedTiles) {
+          //         if (affectedTile === centerTile) continue;
+
+          //         if (affectedTile.isSpecial()) {
+          //           if (specialTiles.has(affectedTile)) continue;
+          //           specialTiles.add(affectedTile);
+          //           specialQueue.push(affectedTile);
+          //         } else {
+          //           priorityDestroyTiles.add(affectedTile);
+          //           // this.boardManager!.clearTileAt(
+          //           //   tileCoords.get(affectedTile)!.x,
+          //           //   tileCoords.get(affectedTile)!.y
+          //           // );
+          //         }
+          //       }
+          //     }
+
           console.log(
             'match special tile',
             match.length === 4 ? SpecialTileType.BOMB : SpecialTileType.RAINBOW
@@ -460,13 +502,23 @@ export default class GameManager extends Singleton {
               match.length === 4 ? SpecialTileType.BOMB : SpecialTileType.RAINBOW,
               combinedTiles,
               () => {
-                combinedTiles.forEach(tile => {
+                for (const tile of combinedTiles) {
                   if (tile.node && tile.node.isValid) {
                     tile.node.destroy();
                   }
-                });
+                }
+                // for (const tile of priorityDestroyTiles) {
+                //   if (tile.node && tile.node.isValid) {
+                //     tile.node.destroy();
+                //   }
+                // }
               }
             );
+            // await this.particleEffectManager!.playSpecialTileDestroyEffect(
+            //   centerTile.node.getWorldPosition(),
+            //   centerTile.node.parent!,
+            //   centerTile.getSpecialType()
+            // );
           });
 
           for (const tile of match) {
@@ -531,6 +583,7 @@ export default class GameManager extends Singleton {
             coords,
             isPlayerSwap
           );
+
           if (affectedTiles.length > 0) {
             affectedTiles.forEach(tile => matchTiles.add(tile));
           }
