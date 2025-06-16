@@ -221,7 +221,9 @@ export class SpecialTileManager extends Component {
       return this.activateRainbowClick(rainbowTile, targetTile, tileGrid);
     }
 
-    if (targetTile.isRainbowTile() && isPlayerSwap) {
+    if (!isPlayerSwap) return [];
+
+    if (targetTile.isRainbowTile()) {
       tileGrid.forEach(row => {
         row.forEach(tile => {
           if (tile && tile.node && tile.node.isValid) {
@@ -232,12 +234,16 @@ export class SpecialTileManager extends Component {
       return affectedTiles;
     }
 
-    if (!isPlayerSwap) return [];
-
     for (let y = 0; y < GameConfig.GridHeight; y++) {
       for (let x = 0; x < GameConfig.GridWidth; x++) {
         const tile = tileGrid[y][x];
-        if (!tile || !targetTile || tile.getTileType() !== targetTile.getTileType()) continue;
+        if (
+          !tile ||
+          !targetTile ||
+          tile.getTileType() !== targetTile.getTileType() ||
+          tile.isRainbowTile()
+        )
+          continue;
         affectedTiles.push(tile);
       }
     }
