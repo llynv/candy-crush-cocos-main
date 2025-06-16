@@ -220,10 +220,5 @@
     },
     "globalConfigKey": "defaultConfig"
   },
-  "macroCustom": [
-    {
-      "key": "CUSTOM",
-      "value": true
-    }
-  ]
+  "macroCustom": []
 }

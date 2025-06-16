@@ -122,7 +122,7 @@ export class SpecialTileManager extends Component {
 
         if (x >= 0 && x < GameConfig.GridWidth && y >= 0 && y < GameConfig.GridHeight) {
           const tile = tileGrid[y][x];
-          if (tile && tile.node && tile.node.isValid) {
+          if (tile && tile.node && tile.node.isValid && !tile.isRainbowTile()) {
             affectedTiles.push(tile);
           }
         }
