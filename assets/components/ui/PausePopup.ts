@@ -255,13 +255,6 @@ export class PausePopup extends Component {
     }
   }
 
-  public onPauseClicked(): void {
-    this.hide();
-    if (this.onPauseCallback) {
-      setTimeout(() => this.onPauseCallback!(), 100);
-    }
-  }
-
   public onNewGameClicked(): void {
     this.hide();
     if (this.onNewGameCallback) {
