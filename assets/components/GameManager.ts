@@ -29,7 +29,7 @@ export default class GameManager extends Singleton {
   private milestoneUINode: Node | null = null;
 
   @property(PausePopup)
-  private pausePopup: PausePopup | null = null;
+  private pausePopupUI: PausePopup | null = null;
 
   @property(GameOverPopup)
   private gameOverPopup: GameOverPopup | null = null;
@@ -44,8 +44,10 @@ export default class GameManager extends Singleton {
   private specialTileManager: SpecialTileManager | null = null;
   private particleEffectManager: ParticleEffectManager | null = null;
   private milestoneAchievementUI: MilestoneAchievementUI | null = null;
+  private pausePopup: PausePopup | null = null;
 
-  private playerIdleTime = 0;
+  private playerIdleTimeForHint = 0;
+  private playerIdleTimeForMaxIdle = 0;
   private canMove = false;
   private firstSelectedTile: Tile | undefined = undefined;
   private secondSelectedTile: Tile | undefined = undefined;
@@ -66,6 +68,7 @@ export default class GameManager extends Singleton {
     if (!this.inputManager) throw new Error('InputManager is required');
     if (!this.specialTileManager) throw new Error('SpecialTileManager is required');
     if (!this.particleEffectManager) throw new Error('ParticleEffectManager is required');
+    if (!this.pausePopup) throw new Error('PausePopup is required');
 
     this.milestoneAchievementUI = this.milestoneUINode?.getComponent(MilestoneAchievementUI)!;
   }
@@ -73,7 +76,7 @@ export default class GameManager extends Singleton {
   protected start(): void {
     this.setupProgressManager();
     this.createBoard();
-    this.setupPopups();
+    this.setupPauseButton();
   }
 
   protected update(dt: number): void {
@@ -87,10 +90,55 @@ export default class GameManager extends Singleton {
     this.inputManager = this.node.getComponent(InputManager);
     this.specialTileManager = this.node.getComponent(SpecialTileManager);
     this.particleEffectManager = this.node.getComponent(ParticleEffectManager);
+    this.pausePopup = this.pausePopupUI?.getComponent(PausePopup)!;
   }
 
   private setupProgressManager(): void {
     ProgressManager.getInstance().onMilestoneCompleted(this.handleMilestoneCompleted.bind(this));
+  }
+
+  private setupPauseButton(): void {
+    if (this.pausePopup) {
+      this.pausePopup.setCallbacks(
+        () => {
+          this.setGameInteractionEnabled(true);
+          GameGlobalData.getInstance().setIsGamePaused(false);
+          this.checkMatches();
+          this.pausePopup?.hide();
+        },
+        () => this.startNewGame()
+      );
+
+      this.pauseButton?.node.on(Node.EventType.TOUCH_END, () => {
+        this.setGameInteractionEnabled(false);
+        GameGlobalData.getInstance().setIsGamePaused(true);
+        this.pausePopup?.show();
+      });
+
+      this.pauseButton?.node.on(Node.EventType.TOUCH_START, () => {
+        tween(this.pauseButton?.node)
+          .to(0.1, { scale: new Vec3(0.9, 0.9, 1) }, { easing: 'quadOut' })
+          .start();
+      });
+
+      this.pauseButton?.node.on(Node.EventType.TOUCH_END, () => {
+        tween(this.pauseButton?.node)
+          .to(0.1, { scale: new Vec3(1, 1, 1) }, { easing: 'quadOut' })
+          .start();
+      });
+
+      this.pauseButton?.node.on(Node.EventType.MOUSE_ENTER, () => {
+        tween(this.pauseButton?.node)
+          .to(0.1, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
+          .start();
+      });
+
+      this.pauseButton?.node.on(Node.EventType.MOUSE_LEAVE, () => {
+        tween(this.pauseButton?.node)
+          .to(0.1, { scale: new Vec3(1, 1, 1) }, { easing: 'quadOut' })
+          .start();
+      });
+    }
   }
 
   private async handleMilestoneCompleted(): Promise<void> {
@@ -172,17 +220,23 @@ export default class GameManager extends Singleton {
   }
 
   private checkIdleTime(dt: number): void {
-    this.playerIdleTime += dt;
-    if (this.playerIdleTime > GameConfig.HintTime) {
+    this.playerIdleTimeForHint += dt;
+    this.playerIdleTimeForMaxIdle += dt;
+    if (this.playerIdleTimeForHint >= GameConfig.HintTime) {
+      this.playerIdleTimeForHint = 0;
       this.showHint();
-      this.playerIdleTime = 0;
+    }
+    if (this.playerIdleTimeForMaxIdle >= GameConfig.MaxIdleTime) {
+      this.playerIdleTimeForMaxIdle = 0;
+      this.animationManager!.animateIdleTiles(this.boardManager!.getTileGrid());
     }
   }
 
   private tileDown(tile: Tile): void {
-    if (this.isGamePaused || this.isGameOver || !this.canMove) return;
+    if (GameGlobalData.getInstance().getIsGamePaused() || this.isGameOver || !this.canMove) return;
 
-    this.playerIdleTime = 0;
+    this.playerIdleTimeForHint = 0;
+    this.playerIdleTimeForMaxIdle = 0;
 
     if (!this.firstSelectedTile || this.firstSelectedTile === tile) {
       this.firstSelectedTile = tile;
@@ -282,6 +336,8 @@ export default class GameManager extends Singleton {
   }
 
   private async checkMatches(isSwapCheck: boolean = false): Promise<void> {
+    if (GameGlobalData.getInstance().getIsGamePaused()) return;
+
     const tileGrid = this.boardManager!.getTileGrid();
     const matches = this.matchManager!.findMatches(tileGrid);
 
@@ -528,12 +584,10 @@ export default class GameManager extends Singleton {
             }
             this.boardManager!.clearTileAt(tileCoords.get(tile)!.x, tileCoords.get(tile)!.y);
           }
-
-          ProgressManager.getInstance().addPendingScore(match.length, match.length);
         } else {
           match.forEach(tile => matchTiles.add(tile));
-          ProgressManager.getInstance().addPendingScore(match.length, match.length);
         }
+        ProgressManager.getInstance().addPendingScore(match.length, match.length);
       }
 
       if (combineCallbacks.length !== 0) {
@@ -710,117 +764,6 @@ export default class GameManager extends Singleton {
     });
   }
 
-  protected onDestroy(): void {}
-
-  /**
-   * Setup popup callbacks and pause button
-   */
-  private setupPopups(): void {
-    if (this.pausePopup) {
-      this.pausePopup.setCallbacks(
-        () => this.resumeGame(),
-        () => this.startNewGame()
-      );
-    }
-
-    if (this.gameOverPopup) {
-      this.gameOverPopup.setCallback(() => this.startNewGame());
-    }
-
-    if (this.pauseButton && this.pauseButton.node) {
-      this.pauseButton.node.off(Button.EventType.CLICK);
-
-      this.pauseButton.node.on(Button.EventType.CLICK, this.togglePause, this);
-
-      this.setupPauseButtonAnimation();
-    }
-  }
-  /**
-   * Setup pause button animations
-   */
-  private setupPauseButtonAnimation(): void {
-    if (!this.pauseButton || !this.pauseButton.node || !this.pauseButton.node.isValid) return;
-
-    const buttonNode = this.pauseButton.node;
-    const originalScale = buttonNode.scale.clone();
-
-    // Remove any existing event listeners to prevent duplicates
-    buttonNode.off(Node.EventType.MOUSE_ENTER);
-    buttonNode.off(Node.EventType.MOUSE_LEAVE);
-    buttonNode.off(Node.EventType.TOUCH_START);
-    buttonNode.off(Node.EventType.TOUCH_END);
-
-    buttonNode.on(Node.EventType.MOUSE_ENTER, () => {
-      if (!buttonNode.isValid) return;
-      tween(buttonNode)
-        .to(0.1, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
-        .start();
-    });
-
-    buttonNode.on(Node.EventType.MOUSE_LEAVE, () => {
-      if (!buttonNode.isValid) return;
-      tween(buttonNode).to(0.1, { scale: originalScale }, { easing: 'quadOut' }).start();
-    });
-
-    buttonNode.on(Node.EventType.TOUCH_START, () => {
-      if (!buttonNode.isValid) return;
-      tween(buttonNode)
-        .to(0.05, { scale: new Vec3(0.95, 0.95, 1) }, { easing: 'quadOut' })
-        .start();
-    });
-
-    buttonNode.on(Node.EventType.TOUCH_END, () => {
-      if (!buttonNode.isValid) return;
-      tween(buttonNode).to(0.1, { scale: originalScale }, { easing: 'backOut' }).start();
-    });
-  }
-
-  /**
-   * Toggle pause state
-   */
-  private togglePause(): void {
-    if (this.isGameOver) return;
-
-    if (this.isGamePaused) {
-      this.resumeGame();
-    } else {
-      this.pauseGame();
-    }
-  }
-
-  /**
-   * Pause the game
-   */
-  private pauseGame(): void {
-    if (this.isGamePaused || this.isGameOver) return;
-
-    this.isGamePaused = true;
-
-    this.setGameInteractionEnabled(false);
-
-    console.log('Game paused');
-
-    // Time.timeScale = 0;
-
-    if (this.pausePopup) {
-      console.log('show pause popup');
-      this.pausePopup.show();
-    }
-  }
-
-  /**
-   * Resume the game
-   */
-  private resumeGame(): void {
-    if (!this.isGamePaused) return;
-
-    this.isGamePaused = false;
-
-    this.setGameInteractionEnabled(true);
-
-    console.log('Game resumed');
-  }
-
   /**
    * Set game interaction enabled/disabled
    */
@@ -847,7 +790,7 @@ export default class GameManager extends Singleton {
   public startNewGame(): void {
     console.log('Starting new game...');
 
-    this.isGamePaused = false;
+    GameGlobalData.getInstance().setIsGamePaused(false);
     this.isGameOver = false;
 
     this.clearBoard();
@@ -862,27 +805,7 @@ export default class GameManager extends Singleton {
    * Check for game over conditions
    */
   private checkGameOverConditions(): void {
-    if (this.isGameOver || this.isGamePaused) return;
-  }
-
-  /**
-   * Trigger game over
-   */
-  private triggerGameOver(reason: string): void {
-    if (this.isGameOver) return;
-
-    console.log('Game Over:', reason);
-
-    this.isGameOver = true;
-    this.setGameInteractionEnabled(false);
-
-    const finalScore = ProgressManager.getInstance().getCurrentScore();
-
-    if (this.gameOverPopup) {
-      setTimeout(() => {
-        this.gameOverPopup!.show(finalScore);
-      }, 1000);
-    }
+    if (this.isGameOver || GameGlobalData.getInstance().getIsGamePaused()) return;
   }
 
   /**
@@ -904,7 +827,7 @@ export default class GameManager extends Singleton {
   }
 
   private async handleRainbowClick(rainbowTile: Tile): Promise<void> {
-    if (this.isGamePaused || this.isGameOver || !this.canMove) return;
+    if (GameGlobalData.getInstance().getIsGamePaused() || this.isGameOver || !this.canMove) return;
 
     this.canMove = false;
     this.playerIdleTime = 0;
@@ -1097,5 +1020,11 @@ export default class GameManager extends Singleton {
 
       if (attempts > 20) break;
     } while (!this.hasSwappablePair());
+  }
+
+  // onDestroy
+  protected onDestroy(): void {
+    this.pauseButton?.node.off(Node.EventType.TOUCH_END);
+    this.pausePopup?.destroy();
   }
 }
