@@ -96,6 +96,7 @@ export class AnimationManager extends Component {
 
     for (const child of children) {
       Tween.stopAllByTarget(child);
+      child.setScale(1, 1, 1);
     }
 
     fallTasks.forEach(task => {
@@ -433,12 +434,12 @@ export class AnimationManager extends Component {
         tween(data.tile.node)
           .delay(delay)
           .parallel(
-            tween().to(
+            tween(data.tile.node).to(
               moveToCirclePhase,
               { position: new Vec3(circleX, circleY, 0) },
               { easing: 'quadOut' }
             ),
-            tween()
+            tween(data.tile.node)
               .to(
                 moveToCirclePhase * 0.5,
                 { scale: new Vec3(0.85, 0.85, 1) },
@@ -486,8 +487,12 @@ export class AnimationManager extends Component {
         tween(data.tile.node)
           .delay(delay)
           .parallel(
-            tween().to(returnPhase, { position: data.originalPos }, { easing: 'backOut' }),
-            tween()
+            tween(data.tile.node).to(
+              returnPhase,
+              { position: data.originalPos },
+              { easing: 'backOut' }
+            ),
+            tween(data.tile.node)
               .to(returnPhase * 0.2, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
               .to(returnPhase * 0.8, { scale: new Vec3(1, 1, 1) }, { easing: 'bounceOut' })
           )
@@ -731,7 +736,7 @@ export class AnimationManager extends Component {
     resolve?: () => void
   ): Promise<void> {
     tween(sourceTile.node)
-      .to(0.15, { position: targetTile.node.getPosition() }, { easing: 'quadOut' })
+      .to(0.1, { position: targetTile.node.getPosition() }, { easing: 'quadOut' })
       .call(() => {
         callback?.();
         resolve?.();
