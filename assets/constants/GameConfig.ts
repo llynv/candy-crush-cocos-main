@@ -79,6 +79,7 @@ export const GameConfig = {
   OffsetY: 40,
   MaxIdleTime: 10,
   HintTime: 5,
+  Moves: 20,
   MilestoneSystem: {
     milestoneThresholds: [
       2000, 4500, 7500, 11000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000,

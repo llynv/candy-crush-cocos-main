@@ -17,6 +17,7 @@ import { MilestoneAchievementUI } from './ui/MilestoneAchievementUI';
 import { PausePopup } from './ui/PausePopup';
 import { GameOverPopup } from './ui/GameOverPopup';
 import { Frame } from './Frame';
+import { ProgressUI } from './ProgressUI';
 
 @ccclass('GameManager')
 export default class GameManager extends Singleton {
@@ -28,6 +29,9 @@ export default class GameManager extends Singleton {
 
   @property(Node)
   private milestoneUINode: Node | null = null;
+
+  @property(Node)
+  private progressUINode: Node | null = null;
 
   @property(PausePopup)
   private pausePopupUI: PausePopup | null = null;
@@ -46,6 +50,7 @@ export default class GameManager extends Singleton {
   private particleEffectManager: ParticleEffectManager | null = null;
   private milestoneAchievementUI: MilestoneAchievementUI | null = null;
   private pausePopup: PausePopup | null = null;
+  private progressUI: ProgressUI | null = null;
 
   private playerIdleTimeForHint = 0;
   private playerIdleTimeForMaxIdle = 0;
@@ -57,7 +62,7 @@ export default class GameManager extends Singleton {
 
   private isGamePaused = false;
   private isGameOver = false;
-  private movesRemaining = 30;
+  private movesRemaining = GameConfig.Moves;
 
   private hintActive: boolean = false;
 
@@ -72,6 +77,7 @@ export default class GameManager extends Singleton {
     if (!this.pausePopup) throw new Error('PausePopup is required');
 
     this.milestoneAchievementUI = this.milestoneUINode?.getComponent(MilestoneAchievementUI)!;
+    this.progressUI = this.progressUINode?.getComponent(ProgressUI)!;
   }
 
   protected start(): void {
@@ -193,6 +199,9 @@ export default class GameManager extends Singleton {
     this.firstSelectedTile = undefined;
     this.secondSelectedTile = undefined;
 
+    this.movesRemaining = GameConfig.Moves;
+    this.updateMovesDisplay(this.movesRemaining);
+
     await this.resetTile();
     await this.checkMatches();
   }
@@ -223,6 +232,8 @@ export default class GameManager extends Singleton {
     this.secondSelectedTile = undefined;
 
     await this.checkMatches();
+
+    this.updateMovesDisplay(this.movesRemaining);
   }
 
   private setupTileCallbacks(): void {
@@ -832,11 +843,14 @@ export default class GameManager extends Singleton {
 
     GameGlobalData.getInstance().setIsGamePaused(false);
     this.isGameOver = false;
+    this.movesRemaining = GameConfig.Moves;
 
     this.clearBoard();
     this.createBoard(true);
 
     this.setGameInteractionEnabled(true);
+
+    this.updateMovesDisplay(this.movesRemaining);
 
     console.log('New game started!');
   }
@@ -854,7 +868,7 @@ export default class GameManager extends Singleton {
   private processMoveAndCheckGameState(): void {
     this.movesRemaining--;
 
-    this.updateMovesDisplay();
+    this.updateMovesDisplay(this.movesRemaining);
 
     this.checkGameOverConditions();
   }
@@ -862,8 +876,12 @@ export default class GameManager extends Singleton {
   /**
    * Update moves display
    */
-  private updateMovesDisplay(): void {
-    console.log(`Moves remaining: ${this.movesRemaining}`);
+  private updateMovesDisplay(movesRemaining: number): void {
+    if (this.progressUI) {
+      this.progressUI.updateMovesDisplay(movesRemaining);
+    } else {
+      console.log(`Moves remaining: ${movesRemaining}`);
+    }
   }
 
   private async handleRainbowClick(rainbowTile: Tile): Promise<void> {

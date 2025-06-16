@@ -12,6 +12,7 @@ import {
   UITransform,
 } from 'cc';
 import { ProgressManager, MilestoneData } from './managers/ProgressManager';
+import { GameConfig } from '../constants/GameConfig';
 
 const { ccclass, property } = _decorator;
 
@@ -28,6 +29,9 @@ export class ProgressUI extends Component {
 
   @property(Label)
   private progressLabel: Label | null = null;
+
+  @property(Label)
+  private movesLabel: Label | null = null;
 
   @property(Node)
   private celebrationNode: Node | null = null;
@@ -50,6 +54,7 @@ export class ProgressUI extends Component {
     this.progressManager.onMilestoneCompleted(this.onMilestoneCompleted.bind(this));
 
     this.updateProgressDisplay(this.progressManager.getMilestoneData());
+    this.updateMovesDisplay(GameConfig.Moves);
   }
 
   private enhanceUIElements(): void {
@@ -58,6 +63,23 @@ export class ProgressUI extends Component {
     this.enhanceProgressLabel();
     this.enhanceProgressBar();
     this.addUIBackgrounds();
+    this.enhanceMovesLabel();
+  }
+
+  private enhanceMovesLabel(): void {
+    if (!this.movesLabel) return;
+
+    this.movesLabel.color = new Color(255, 255, 255, 255);
+    this.movesLabel.fontSize = 22;
+    this.movesLabel.isBold = true;
+    this.movesLabel.enableOutline = true;
+    this.movesLabel.outlineColor = new Color(0, 0, 139, 255);
+    this.movesLabel.outlineWidth = 2;
+
+    this.movesLabel.enableShadow = true;
+    this.movesLabel.shadowColor = new Color(0, 0, 0, 100);
+    this.movesLabel.shadowOffset = new Vec2(1, -1);
+    this.movesLabel.shadowBlur = 3;
   }
 
   private enhanceScoreLabel(): void {
@@ -394,6 +416,53 @@ export class ProgressUI extends Component {
     }
     if (this.milestoneBackground && this.milestoneBackground.isValid) {
       this.milestoneBackground.destroy();
+    }
+  }
+
+  public updateMovesDisplay(movesRemaining: number): void {
+    if (!this.movesLabel) return;
+
+    console.log('movesRemaining', movesRemaining);
+    const newText = `Moves: ${movesRemaining}`;
+
+    if (this.movesLabel.string !== newText) {
+      this.animateMovesChange(movesRemaining, newText);
+    }
+  }
+
+  private animateMovesChange(movesRemaining: number, newText: string): void {
+    if (!this.movesLabel) return;
+
+    let textColor: Color;
+    if (movesRemaining <= 5) {
+      textColor = new Color(255, 69, 0, 255);
+    } else if (movesRemaining <= 10) {
+      textColor = new Color(255, 165, 0, 255);
+    } else {
+      textColor = new Color(255, 255, 255, 255);
+    }
+
+    tween(this.movesLabel)
+      .to(0.1, { color: new Color(255, 255, 255, 255) })
+      .to(0.2, { color: textColor })
+      .start();
+
+    tween(this.movesLabel.node)
+      .to(0.1, { scale: new Vec3(1.2, 1.2, 1) })
+      .call(() => {
+        this.movesLabel!.string = newText;
+      })
+      .to(0.2, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' })
+      .start();
+
+    if (movesRemaining <= 5) {
+      tween(this.movesLabel.node)
+        .delay(0.3)
+        .to(0.1, { scale: new Vec3(1.1, 1.1, 1) })
+        .to(0.1, { scale: new Vec3(1, 1, 1) })
+        .to(0.1, { scale: new Vec3(1.1, 1.1, 1) })
+        .to(0.1, { scale: new Vec3(1, 1, 1) })
+        .start();
     }
   }
 }
