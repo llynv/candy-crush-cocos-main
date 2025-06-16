@@ -41,6 +41,10 @@ export class PausePopup extends Component {
   private onContinueCallback: (() => void) | null = null;
   private onNewGameCallback: (() => void) | null = null;
 
+  // protected __preload(): void {
+  //   if (!this.popupPanel) {
+  // }
+
   protected start(): void {
     this.isVisible = false;
     this.setupButtons();
@@ -159,6 +163,7 @@ export class PausePopup extends Component {
    * Show popup with animation
    */
   public show(): void {
+    console.log(`show: ${this.isVisible}`);
     if (this.isVisible) return;
 
     this.isVisible = true;
@@ -293,8 +298,30 @@ export class PausePopup extends Component {
   }
 
   protected onDestroy(): void {
-    this.continueButton?.node.off(Button.EventType.CLICK);
-    this.newGameButton?.node.off(Button.EventType.CLICK);
-    this.soundToggle?.node.off(Toggle.EventType.TOGGLE);
+    // Clean up button events
+    if (this.continueButton?.node) {
+      this.continueButton.node.off(Node.EventType.TOUCH_END);
+    }
+    if (this.newGameButton?.node) {
+      this.newGameButton.node.off(Node.EventType.TOUCH_END);
+    }
+
+    if (this.popupPanel) {
+      tween(this.popupPanel).stop();
+      const sprite = this.popupPanel.getComponent(Sprite);
+      if (sprite) {
+        tween(sprite).stop();
+      }
+    }
+
+    if (this.backgroundOverlay) {
+      const bgOpacity = this.backgroundOverlay.getComponent(UIOpacity);
+      if (bgOpacity) {
+        tween(bgOpacity).stop();
+      }
+    }
+
+    this.onContinueCallback = null;
+    this.onNewGameCallback = null;
   }
 }

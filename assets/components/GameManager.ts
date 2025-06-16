@@ -62,7 +62,7 @@ export default class GameManager extends Singleton {
 
   private isGamePaused = false;
   private isGameOver = false;
-  private movesRemaining = GameConfig.Moves;
+  private movesRemaining: number = GameConfig.Moves;
 
   private hintActive: boolean = false;
 
@@ -125,9 +125,10 @@ export default class GameManager extends Singleton {
 
   private setupPauseButtonEvents(): void {
     this.pauseButton?.node.on(Node.EventType.TOUCH_END, () => {
+      this.pausePopup?.show();
+      console.log(this.pausePopup);
       this.setGameInteractionEnabled(false);
       GameGlobalData.getInstance().setIsGamePaused(true);
-      this.pausePopup?.show();
     });
 
     this.pauseButton?.node.on(Node.EventType.TOUCH_START, () => {
@@ -286,7 +287,6 @@ export default class GameManager extends Singleton {
       if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
         this.canMove = false;
         this.swapTiles();
-        this.processMoveAndCheckGameState();
       } else {
         this.firstSelectedTile.changeState('idle');
         this.firstSelectedTile = tile;
@@ -389,6 +389,10 @@ export default class GameManager extends Singleton {
     }
 
     if (matches.length > 0) {
+      if (isSwapCheck) {
+        this.processMove();
+      }
+
       await this.removeTileGroup(matches);
       await this.resetTile();
       this.tileUp();
@@ -403,6 +407,8 @@ export default class GameManager extends Singleton {
         this.canMove = true;
         GameGlobalData.getInstance().setIsMouseDown(false);
         this.resetFrames();
+
+        this.checkGameOverConditions();
       }
       this.tileUp();
     }
@@ -634,11 +640,6 @@ export default class GameManager extends Singleton {
         return true;
       }
 
-      if (tile.isRainbowTile()) {
-        console.log('is player swap', isPlayerSwap);
-        console.log('affectedTiles', affectedTiles);
-      }
-
       if (!isPlayerSwap && tile.isRainbowTile()) {
         onTileDestroyed();
       }
@@ -750,7 +751,6 @@ export default class GameManager extends Singleton {
       }
 
       await Promise.all(destroyCallbacks.map(callback => callback()));
-
       this.swappedTiles = [];
     });
   }
@@ -843,7 +843,17 @@ export default class GameManager extends Singleton {
 
     GameGlobalData.getInstance().setIsGamePaused(false);
     this.isGameOver = false;
+    this.canMove = false;
     this.movesRemaining = GameConfig.Moves;
+
+    if (this.gameOverPopup) {
+      this.gameOverPopup.hide(false);
+    }
+
+    const progressManager = ProgressManager.getInstance();
+    if (progressManager) {
+      progressManager.resetProgress();
+    }
 
     this.clearBoard();
     this.createBoard(true);
@@ -860,17 +870,49 @@ export default class GameManager extends Singleton {
    */
   private checkGameOverConditions(): void {
     if (this.isGameOver || GameGlobalData.getInstance().getIsGamePaused()) return;
+
+    if (this.movesRemaining <= 0) {
+      this.triggerGameOver();
+    }
+  }
+
+  /**
+   * Trigger game over sequence
+   */
+  private triggerGameOver(): void {
+    console.log('Game Over - No moves remaining!');
+
+    this.isGameOver = true;
+    this.canMove = false;
+
+    this.setGameInteractionEnabled(false);
+    GameGlobalData.getInstance().setIsGameOver(true);
+
+    const progressManager = ProgressManager.getInstance();
+    const finalScore = progressManager ? progressManager.getCurrentScore() : 0;
+
+    if (this.gameOverPopup) {
+      this.gameOverPopup!.show(finalScore);
+
+      this.gameOverPopup!.setCallback(() => {
+        this.startNewGame();
+      });
+    }
   }
 
   /**
    * Process a player move
    */
-  private processMoveAndCheckGameState(): void {
+  private processMove(): void {
+    if (this.isGameOver) return;
+
     this.movesRemaining--;
 
-    this.updateMovesDisplay(this.movesRemaining);
+    if (this.movesRemaining < 0) {
+      this.movesRemaining = 0;
+    }
 
-    this.checkGameOverConditions();
+    this.updateMovesDisplay(this.movesRemaining);
   }
 
   /**
@@ -929,6 +971,8 @@ export default class GameManager extends Singleton {
     }
 
     ProgressManager.getInstance().addPendingScore(affectedTiles.length, affectedTiles.length);
+
+    this.processMove();
 
     await this.resetTile();
   }
@@ -1081,9 +1125,30 @@ export default class GameManager extends Singleton {
     }
   }
 
-  // onDestroy
   protected onDestroy(): void {
-    this.pauseButton?.node.off(Node.EventType.TOUCH_END);
-    this.pausePopup?.destroy();
+    if (this.pauseButton?.node) {
+      this.pauseButton.node.off(Node.EventType.TOUCH_END);
+      this.pauseButton.node.off(Node.EventType.TOUCH_START);
+      this.pauseButton.node.off(Node.EventType.MOUSE_ENTER);
+      this.pauseButton.node.off(Node.EventType.MOUSE_LEAVE);
+    }
+
+    const progressManager = ProgressManager.getInstance();
+    if (progressManager) {
+      progressManager.offMilestoneCompleted(this.handleMilestoneCompleted.bind(this));
+    }
+
+    if (this.pausePopup) {
+      this.pausePopup.destroy();
+    }
+
+    if (this.pauseButton?.node) {
+      tween(this.pauseButton.node).stop();
+    }
+
+    this.firstSelectedTile = undefined;
+    this.secondSelectedTile = undefined;
+    this.swappedTiles = [];
+    this.triggeredSpecialTiles = [];
   }
 }
