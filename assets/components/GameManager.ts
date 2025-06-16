@@ -873,35 +873,17 @@ export default class GameManager extends Singleton {
     this.playerIdleTimeForHint = 0;
     this.playerIdleTimeForMaxIdle = 0;
 
-    const availableTargets = this.specialTileManager!.activateSpecialTile(
+    const affectedTiles = this.specialTileManager!.activateSpecialTile(
       rainbowTile,
       rainbowTile,
-      { x: 0, y: 0 }, // placeholder coords
+      { x: 0, y: 0 },
+      false,
       true
     );
 
-    if (availableTargets.length === 0) {
-      this.canMove = true;
-      return;
-    }
+    console.log('affectedTiles', affectedTiles);
 
-    const randomDestroyCount =
-      Math.floor(
-        Math.random() *
-          (GameConfig.RainbowClick.maxDestroyCount - GameConfig.RainbowClick.minDestroyCount)
-      ) + GameConfig.RainbowClick.minDestroyCount;
-
-    const destroyCount = Math.min(availableTargets.length, randomDestroyCount);
-    const selectedTargets: Tile[] = [];
-
-    const shuffled = [...availableTargets];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    selectedTargets.push(...shuffled.slice(0, destroyCount));
-
-    await this.animationManager!.animateRainbowClickEffect(rainbowTile, selectedTargets);
+    await this.animationManager!.animateRainbowClickEffect(rainbowTile);
 
     const tileCoords = this.boardManager!.getTileCoords();
     const rainbowCoords = tileCoords.get(rainbowTile);
@@ -909,21 +891,27 @@ export default class GameManager extends Singleton {
       this.boardManager!.clearTileAt(rainbowCoords.x, rainbowCoords.y);
     }
 
-    selectedTargets.forEach(tile => {
-      const coords = tileCoords.get(tile);
-      if (coords) {
-        if (tile.node && tile.node.isValid) {
-          tile.node.destroy();
-        }
-        this.boardManager!.clearTileAt(coords.x, coords.y);
+    for (const tile of affectedTiles) {
+      if (!tile || !tile.node || !tile.node.isValid) {
+        continue;
       }
-    });
 
-    ProgressManager.getInstance().addPendingScore(destroyCount + 1, destroyCount + 1);
-    await rainbowTile.playDestroyAnimation();
-    if (rainbowTile.node && rainbowTile.node.isValid) {
-      rainbowTile.node.destroy();
+      tile.playDestroyAnimation();
+      await tile.playParticleEffect();
+
+      if (tile.node && tile.node.isValid) {
+        tile.node.destroy();
+      }
+      await new Promise(resolve => this.scheduleOnce(resolve, 0.05));
+
+      const tilePosition = tileCoords.get(tile)!;
+      if (tilePosition) {
+        this.boardManager!.clearTileAt(tilePosition.x, tilePosition.y);
+      }
     }
+
+    ProgressManager.getInstance().addPendingScore(affectedTiles.length, affectedTiles.length);
+
     await this.resetTile();
   }
 
