@@ -187,7 +187,7 @@ export class Tile extends Component {
     this.sprite!.spriteFrame = spriteFrame;
     this.sprite!.color = new Color(255, 255, 255, 255);
     const uiTransform = this.sprite!.node.getComponent(UITransform);
-    uiTransform!.setContentSize(50, 50);
+    uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
   }
 
   private updateBombAppearance() {
@@ -197,7 +197,7 @@ export class Tile extends Component {
     }
 
     const uiTransform = this.sprite!.node.getComponent(UITransform);
-    uiTransform!.setContentSize(50, 50);
+    uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
 
     console.log('updateBombAppearance', this.specialType);
   }
@@ -211,7 +211,7 @@ export class Tile extends Component {
     this.sprite!.color = new Color(200, 200, 255, 255);
 
     const uiTransform = this.sprite!.node.getComponent(UITransform);
-    uiTransform!.setContentSize(50, 50);
+    uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
   }
 
   private updateWrappedAppearance() {
@@ -223,7 +223,7 @@ export class Tile extends Component {
     this.sprite!.color = new Color(255, 255, 200, 255);
 
     const uiTransform = this.sprite!.node.getComponent(UITransform);
-    uiTransform!.setContentSize(50, 50);
+    uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
   }
 
   private updateRainbowAppearance() {
@@ -237,7 +237,7 @@ export class Tile extends Component {
     console.log('updateRainbowAppearance', this.specialType);
 
     const uiTransform = this.sprite!.node.getComponent(UITransform);
-    uiTransform!.setContentSize(50, 50);
+    uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
   }
 
   public changeState(stateName: string): void {
