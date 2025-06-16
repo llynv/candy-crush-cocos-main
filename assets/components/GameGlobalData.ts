@@ -1,12 +1,9 @@
 import { Singleton } from './patterns/Singleton';
 
-/**
- * GameGlobalData class that manages global game data using the Singleton pattern.
- * This ensures only one instance of game data exists throughout the application.
- */
 export class GameGlobalData extends Singleton {
   private isMouseDown: boolean = false;
   private isGamePaused: boolean = false;
+  private isGameOver: boolean = false;
 
   public getIsMouseDown(): boolean {
     return this.isMouseDown;
@@ -22,5 +19,13 @@ export class GameGlobalData extends Singleton {
 
   public setIsGamePaused(isGamePaused: boolean): void {
     this.isGamePaused = isGamePaused;
+  }
+
+  public getIsGameOver(): boolean {
+    return this.isGameOver;
+  }
+
+  public setIsGameOver(isGameOver: boolean): void {
+    this.isGameOver = isGameOver;
   }
 }
