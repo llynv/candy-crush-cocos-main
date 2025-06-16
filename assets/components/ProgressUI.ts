@@ -348,7 +348,7 @@ export class ProgressUI extends Component {
     const colorTween = tween(this.scoreLabel)
       .repeat(
         4,
-        tween()
+        tween(this.scoreLabel)
           .call(() => {
             this.scoreLabel!.color = colors[colorIndex];
             colorIndex = (colorIndex + 1) % colors.length;
@@ -388,7 +388,7 @@ export class ProgressUI extends Component {
     tween(this.progressBar.barSprite)
       .repeat(
         rainbowColors.length,
-        tween()
+        tween(this.progressBar.barSprite)
           .call(() => {
             this.progressBar!.barSprite!.color = rainbowColors[colorIndex];
             colorIndex++;
@@ -408,7 +408,40 @@ export class ProgressUI extends Component {
   }
 
   protected onDestroy(): void {
+    // Clean up ProgressManager callbacks
+    if (this.progressManager) {
+      this.progressManager.offProgressUpdate(this.updateProgressDisplay.bind(this));
+      this.progressManager.offMilestoneCompleted(this.onMilestoneCompleted.bind(this));
+    }
+
+    // Stop all tweens on UI elements
+    if (this.progressBar?.node) {
+      tween(this.progressBar.node).stop();
+    }
+    if (this.progressBar?.barSprite) {
+      tween(this.progressBar.barSprite).stop();
+    }
+    if (this.scoreLabel?.node) {
+      tween(this.scoreLabel.node).stop();
+      tween(this.scoreLabel).stop();
+    }
+    if (this.milestoneLabel?.node) {
+      tween(this.milestoneLabel.node).stop();
+    }
+    if (this.progressLabel?.node) {
+      tween(this.progressLabel.node).stop();
+    }
+    if (this.movesLabel?.node) {
+      tween(this.movesLabel.node).stop();
+      tween(this.movesLabel).stop();
+    }
+    if (this.celebrationNode) {
+      tween(this.celebrationNode).stop();
+    }
+
+    // Clean up backgrounds
     if (this.scoreBackground && this.scoreBackground.isValid) {
+      tween(this.scoreBackground).stop();
       this.scoreBackground.destroy();
     }
     if (this.progressBackground && this.progressBackground.isValid) {
@@ -455,7 +488,17 @@ export class ProgressUI extends Component {
       .to(0.2, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' })
       .start();
 
-    if (movesRemaining <= 5) {
+    // Extra animation for game over or low moves warning
+    if (movesRemaining <= 0) {
+      // Game over animation - more dramatic
+      tween(this.movesLabel.node)
+        .delay(0.3)
+        .to(0.15, { scale: new Vec3(1.3, 1.3, 1) })
+        .to(0.15, { scale: new Vec3(0.9, 0.9, 1) })
+        .to(0.15, { scale: new Vec3(1.3, 1.3, 1) })
+        .to(0.15, { scale: new Vec3(1, 1, 1) })
+        .start();
+    } else if (movesRemaining <= 5) {
       tween(this.movesLabel.node)
         .delay(0.3)
         .to(0.1, { scale: new Vec3(1.1, 1.1, 1) })
