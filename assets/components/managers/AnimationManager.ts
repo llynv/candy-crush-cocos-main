@@ -613,7 +613,7 @@ export class AnimationManager extends Component {
 
       const uiTransform = piece.addComponent(UITransform);
       if (uiTransform) {
-        uiTransform.setContentSize(55, 55);
+        uiTransform.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
       }
 
       const rainbowSprite = rainbowTile.getSprite();
@@ -720,7 +720,7 @@ export class AnimationManager extends Component {
       const sprite = piece.getComponent(Sprite)!;
       const uiTransform = piece.addComponent(UITransform);
       if (uiTransform) {
-        uiTransform.setContentSize(55, 55);
+        uiTransform.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
       }
       const rainbowSprite = rainbowTile.getSprite();
       if (rainbowSprite && rainbowSprite.spriteFrame) {

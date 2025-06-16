@@ -6,6 +6,7 @@ import { Singleton } from './patterns/Singleton';
  */
 export class GameGlobalData extends Singleton {
   private isMouseDown: boolean = false;
+  private isGamePaused: boolean = false;
 
   public getIsMouseDown(): boolean {
     return this.isMouseDown;
@@ -13,5 +14,13 @@ export class GameGlobalData extends Singleton {
 
   public setIsMouseDown(isMouseDown: boolean): void {
     this.isMouseDown = isMouseDown;
+  }
+
+  public getIsGamePaused(): boolean {
+    return this.isGamePaused;
+  }
+
+  public setIsGamePaused(isGamePaused: boolean): void {
+    this.isGamePaused = isGamePaused;
   }
 }

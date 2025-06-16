@@ -56,7 +56,11 @@ export class PausePopup extends Component {
       clickHandler.target = this.node;
       clickHandler.component = 'PausePopup';
       clickHandler.handler = 'onContinueClicked';
-      this.continueButton.clickEvents.push(clickHandler);
+      // this.continueButton.clickEvents.push(clickHandler);
+
+      this.continueButton.node.on(Node.EventType.TOUCH_END, () => {
+        this.onContinueClicked();
+      });
     }
 
     if (this.newGameButton) {
@@ -66,7 +70,11 @@ export class PausePopup extends Component {
       clickHandler.target = this.node;
       clickHandler.component = 'PausePopup';
       clickHandler.handler = 'onNewGameClicked';
-      this.newGameButton.clickEvents.push(clickHandler);
+      // this.newGameButton.clickEvents.push(clickHandler);
+
+      this.newGameButton.node.on(Node.EventType.TOUCH_END, () => {
+        this.onNewGameClicked();
+      });
     }
 
     if (this.soundToggle) {
@@ -181,7 +189,7 @@ export class PausePopup extends Component {
       tween(panelOpacity).to(0.2, { opacity: 255 }, { easing: 'quadOut' }).start();
 
       tween(this.popupPanel)
-        .to(0.4, { scale: new Vec3(1.2, 1.2, 1) }, { easing: 'backOut' })
+        .to(0.3, { scale: new Vec3(1.2, 1.2, 1) }, { easing: 'backOut' })
         .to(0.2, { scale: new Vec3(1, 1, 1) }, { easing: 'quadOut' })
         .start();
     }
@@ -243,14 +251,21 @@ export class PausePopup extends Component {
   public onContinueClicked(): void {
     this.hide();
     if (this.onContinueCallback) {
-      setTimeout(() => this.onContinueCallback!(), 300);
+      setTimeout(() => this.onContinueCallback!(), 100);
+    }
+  }
+
+  public onPauseClicked(): void {
+    this.hide();
+    if (this.onPauseCallback) {
+      setTimeout(() => this.onPauseCallback!(), 100);
     }
   }
 
   public onNewGameClicked(): void {
     this.hide();
     if (this.onNewGameCallback) {
-      setTimeout(() => this.onNewGameCallback!(), 300);
+      setTimeout(() => this.onNewGameCallback!(), 100);
     }
   }
 
@@ -284,5 +299,9 @@ export class PausePopup extends Component {
     }
   }
 
-  protected onDestroy(): void {}
+  protected onDestroy(): void {
+    this.continueButton?.node.off(Button.EventType.CLICK);
+    this.newGameButton?.node.off(Button.EventType.CLICK);
+    this.soundToggle?.node.off(Toggle.EventType.TOGGLE);
+  }
 }
