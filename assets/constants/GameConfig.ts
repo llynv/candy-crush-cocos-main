@@ -71,10 +71,12 @@ export const PatternShape: { name: string; shape: Vec3[] }[] = [
 export const GameConfig = {
   GridWidth: 8,
   GridHeight: 8,
-  TileWidth: 64,
-  TileHeight: 64,
+  TileWidth: 42,
+  TileHeight: 42,
+  SpriteSize: 40,
+  FrameSize: 42,
   OffsetX: 0,
-  OffsetY: 0,
+  OffsetY: 40,
   MaxIdleTime: 10,
   HintTime: 5,
   MilestoneSystem: {
