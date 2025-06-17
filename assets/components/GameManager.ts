@@ -18,6 +18,7 @@ import { PausePopup } from './ui/PausePopup';
 import { GameOverPopup } from './ui/GameOverPopup';
 import { Frame } from './Frame';
 import { ProgressUI } from './ProgressUI';
+import { ConfettiSystem } from './ConfettiSystem';
 
 @ccclass('GameManager')
 export default class GameManager extends Singleton {
@@ -41,6 +42,9 @@ export default class GameManager extends Singleton {
 
   @property(Button)
   private pauseButton: Button | null = null;
+
+  @property(ConfettiSystem)
+  private confettiSystem: ConfettiSystem | null = null;
 
   private boardManager: BoardManager | null = null;
   private matchManager: MatchManager | null = null;
@@ -179,6 +183,8 @@ export default class GameManager extends Singleton {
     GameGlobalData.getInstance().setIsMouseDown(false);
 
     const milestoneData = ProgressManager.getInstance().getMilestoneData();
+
+    this.confettiSystem!.createCelebrationConfetti();
 
     if (this.milestoneAchievementUI) {
       this.isOnMilestoneAchievement = true;
