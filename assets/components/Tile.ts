@@ -4,6 +4,7 @@ import {
   resources,
   Sprite,
   SpriteFrame,
+  SpriteAtlas,
   EventMouse,
   UITransform,
   ParticleSystem2D,
@@ -181,63 +182,108 @@ export class Tile extends Component {
   }
 
   private updateNormalAppearance() {
-    const spriteFrame = resources.get(`images/${this.tileType.name}/spriteFrame`, SpriteFrame);
-    if (!spriteFrame) throw new Error(`Sprite frame for ${this.tileType.name} not found`);
+    resources.load('images/atlas/candies', SpriteAtlas, (err, atlas) => {
+      if (err) {
+        console.error(`Failed to load atlas: ${err}`);
+        return;
+      }
+      console.log('updateNormalAppearance', this.tileType?.name);
+      if (!this.tileType) {
+        console.error('Tile type is not set');
+        return;
+      }
 
-    this.sprite!.spriteFrame = spriteFrame;
-    this.sprite!.color = new Color(255, 255, 255, 255);
-    const uiTransform = this.sprite!.node.getComponent(UITransform);
-    uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
+      const spriteFrame = atlas.getSpriteFrame(this.tileType.name);
+      if (!spriteFrame) {
+        console.error(`Sprite frame for ${this.tileType.name} not found in atlas`);
+        return;
+      }
+
+      this.sprite!.spriteFrame = spriteFrame;
+      this.sprite!.color = new Color(255, 255, 255, 255);
+      const uiTransform = this.sprite!.node.getComponent(UITransform);
+      uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
+    });
   }
 
   private updateBombAppearance() {
-    const spriteFrame = resources.get(`images/${this.tileType.name}/spriteFrame`, SpriteFrame);
-    if (spriteFrame) {
-      this.sprite!.spriteFrame = spriteFrame;
-    }
+    resources.load('images/atlas/candies', SpriteAtlas, (err, atlas) => {
+      if (err) {
+        console.error(`Failed to load atlas: ${err}`);
+        return;
+      }
 
-    const uiTransform = this.sprite!.node.getComponent(UITransform);
-    uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
+      const spriteFrame = atlas.getSpriteFrame(this.tileType.name);
+      if (spriteFrame) {
+        this.sprite!.spriteFrame = spriteFrame;
+      }
 
-    console.log('updateBombAppearance', this.specialType);
+      const uiTransform = this.sprite!.node.getComponent(UITransform);
+      uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
+
+      console.log('updateBombAppearance', this.specialType);
+    });
   }
 
   private updateStripedAppearance(direction: 'horizontal' | 'vertical') {
-    const spriteFrame = resources.get(`images/${this.tileType.name}/spriteFrame`, SpriteFrame);
-    if (spriteFrame) {
-      this.sprite!.spriteFrame = spriteFrame;
-    }
+    resources.load('images/atlas/candies', SpriteAtlas, (err, atlas) => {
+      if (err) {
+        console.error(`Failed to load atlas: ${err}`);
+        return;
+      }
 
-    this.sprite!.color = new Color(200, 200, 255, 255);
+      const spriteFrame = atlas.getSpriteFrame(this.tileType.name);
+      if (spriteFrame) {
+        this.sprite!.spriteFrame = spriteFrame;
+      }
 
-    const uiTransform = this.sprite!.node.getComponent(UITransform);
-    uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
+      this.sprite!.color = new Color(200, 200, 255, 255);
+
+      const uiTransform = this.sprite!.node.getComponent(UITransform);
+      uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
+    });
   }
 
   private updateWrappedAppearance() {
-    const spriteFrame = resources.get(`images/${this.tileType.name}/spriteFrame`, SpriteFrame);
-    if (spriteFrame) {
-      this.sprite!.spriteFrame = spriteFrame;
-    }
+    resources.load('images/atlas/candies', SpriteAtlas, (err, atlas) => {
+      if (err) {
+        console.error(`Failed to load atlas: ${err}`);
+        return;
+      }
 
-    this.sprite!.color = new Color(255, 255, 200, 255);
+      const spriteFrame = atlas.getSpriteFrame(this.tileType.name);
+      if (spriteFrame) {
+        this.sprite!.spriteFrame = spriteFrame;
+      }
 
-    const uiTransform = this.sprite!.node.getComponent(UITransform);
-    uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
+      this.sprite!.color = new Color(255, 255, 200, 255);
+
+      const uiTransform = this.sprite!.node.getComponent(UITransform);
+      uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
+    });
   }
 
   private updateRainbowAppearance() {
     this.sprite!.color = new Color(255, 255, 255, 255);
 
-    const rainbowFrame = resources.get(`images/Rainbow Candy/spriteFrame`, SpriteFrame);
-    if (rainbowFrame) {
-      this.sprite!.spriteFrame = rainbowFrame;
-    }
+    resources.load('images/atlas/candies', SpriteAtlas, (err, atlas) => {
+      if (err) {
+        console.error(`Failed to load rainbow sprite: ${err}`);
+        return;
+      }
 
-    console.log('updateRainbowAppearance', this.specialType);
+      const spriteFrame = atlas.getSpriteFrame('Rainbow Candy');
+      if (spriteFrame) {
+        this.sprite!.spriteFrame = spriteFrame;
+      } else {
+        console.error('Sprite frame for Rainbow Candy not found in atlas');
+      }
 
-    const uiTransform = this.sprite!.node.getComponent(UITransform);
-    uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
+      console.log('updateRainbowAppearance', this.specialType);
+
+      const uiTransform = this.sprite!.node.getComponent(UITransform);
+      uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
+    });
   }
 
   public changeState(stateName: string): void {
