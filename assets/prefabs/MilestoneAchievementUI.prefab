@@ -883,6 +883,8 @@
       "__uuid__": "bc5305df-95ec-423c-a5f0-ac99666aece3",
       "__expectedType__": "cc.Prefab"
     },
+    "confettiSystem": null,
+    "confettiContainer": null,
     "_id": ""
   },
   {

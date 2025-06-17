@@ -18,6 +18,7 @@ import {
 import { ProgressManager } from '../managers/ProgressManager';
 import { ParticleEffectManager } from '../managers/ParticleEffectManager';
 import { MilestoneData } from '../managers/ProgressManager';
+import { ConfettiSystem } from '../ConfettiSystem';
 
 const { ccclass, property } = _decorator;
 
@@ -41,6 +42,9 @@ export class MilestoneAchievementUI extends Component {
   @property(Prefab)
   private confettiPrefab: Prefab | null = null;
 
+  @property(ConfettiSystem)
+  private confettiSystem: ConfettiSystem | null = null;
+
   public async showMilestoneAchievement(
     milestoneData: MilestoneData,
     callback?: () => void
@@ -59,20 +63,7 @@ export class MilestoneAchievementUI extends Component {
 
     await this.animateEntrance();
 
-    if (this.confettiPrefab) {
-      const confetti = instantiate(this.confettiPrefab);
-      confetti.setParent(this.node);
-      confetti.setPosition(0, 350, 0);
-      confetti.setScale(0, 0, 0);
-      const confettiOpacity = confetti.getComponent(UIOpacity);
-      if (confettiOpacity) {
-        confettiOpacity.opacity = 255;
-      }
-      tween(confetti)
-        .to(0.5, { scale: new Vec3(1.1, 1.1, 1.1) }, { easing: 'quadOut' })
-        .to(0.2, { scale: new Vec3(1, 1, 1) }, { easing: 'quadIn' })
-        .start();
-    }
+    this.confettiSystem!.createCelebrationConfetti();
 
     await new Promise(resolve => setTimeout(resolve, 3000));
 
@@ -135,6 +126,10 @@ export class MilestoneAchievementUI extends Component {
     }
     if (this.backgroundSprite) {
       Tween.stopAllByTarget(this.backgroundSprite);
+    }
+
+    if (this.confettiSystem) {
+      this.confettiSystem.clearAllParticles();
     }
   }
 }
