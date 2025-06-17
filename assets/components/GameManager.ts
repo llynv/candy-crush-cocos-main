@@ -65,6 +65,7 @@ export default class GameManager extends Singleton {
   private movesRemaining: number = GameConfig.Moves;
 
   private hintActive: boolean = false;
+  private isOnMilestoneAchievement = false;
 
   protected __preload(): void {
     this.assignManagers();
@@ -125,8 +126,9 @@ export default class GameManager extends Singleton {
 
   private setupPauseButtonEvents(): void {
     this.pauseButton?.node.on(Node.EventType.TOUCH_END, () => {
+      if (this.isOnMilestoneAchievement) return;
+
       this.pausePopup?.show();
-      console.log(this.pausePopup);
       this.setGameInteractionEnabled(false);
       GameGlobalData.getInstance().setIsGamePaused(true);
     });
@@ -173,14 +175,13 @@ export default class GameManager extends Singleton {
   }
 
   private async handleMilestoneCompleted(): Promise<void> {
-    console.log('Milestone completed! Starting celebration sequence...');
-
     this.canMove = false;
     GameGlobalData.getInstance().setIsMouseDown(false);
 
     const milestoneData = ProgressManager.getInstance().getMilestoneData();
 
     if (this.milestoneAchievementUI) {
+      this.isOnMilestoneAchievement = true;
       this.milestoneAchievementUI.showMilestoneAchievement(milestoneData);
     }
     this.clearBoard();
@@ -191,7 +192,10 @@ export default class GameManager extends Singleton {
 
     const tileAnimationPromise = this.animationManager!.animateMilestoneCelebration(
       currentTileGrid,
-      this.celebrationNode!
+      this.celebrationNode!,
+      () => {
+        this.isOnMilestoneAchievement = false;
+      }
     );
 
     await Promise.all([tileAnimationPromise]);
@@ -266,7 +270,13 @@ export default class GameManager extends Singleton {
   }
 
   private tileDown(tile: Tile): void {
-    if (GameGlobalData.getInstance().getIsGamePaused() || this.isGameOver || !this.canMove) return;
+    if (
+      GameGlobalData.getInstance().getIsGamePaused() ||
+      this.isGameOver ||
+      !this.canMove ||
+      this.isOnMilestoneAchievement
+    )
+      return;
 
     this.playerIdleTimeForHint = 0;
     this.playerIdleTimeForMaxIdle = 0;
@@ -574,10 +584,6 @@ export default class GameManager extends Singleton {
     combineCallbacks: Array<() => void>,
     centerTile: Tile
   ): void {
-    console.log(
-      'match special tile',
-      match.length === 4 ? SpecialTileType.BOMB : SpecialTileType.RAINBOW
-    );
     combineCallbacks.push(async () => {
       const combinedTiles = match.filter(tile => tile !== centerTile);
       await this.specialTileManager!.createSpecialTile(
@@ -839,8 +845,6 @@ export default class GameManager extends Singleton {
    * Start a new game
    */
   public startNewGame(): void {
-    console.log('Starting new game...');
-
     GameGlobalData.getInstance().setIsGamePaused(false);
     this.isGameOver = false;
     this.canMove = false;
@@ -861,8 +865,6 @@ export default class GameManager extends Singleton {
     this.setGameInteractionEnabled(true);
 
     this.updateMovesDisplay(this.movesRemaining);
-
-    console.log('New game started!');
   }
 
   /**
@@ -880,8 +882,6 @@ export default class GameManager extends Singleton {
    * Trigger game over sequence
    */
   private triggerGameOver(): void {
-    console.log('Game Over - No moves remaining!');
-
     this.isGameOver = true;
     this.canMove = false;
 
@@ -922,7 +922,6 @@ export default class GameManager extends Singleton {
     if (this.progressUI) {
       this.progressUI.updateMovesDisplay(movesRemaining);
     } else {
-      console.log(`Moves remaining: ${movesRemaining}`);
     }
   }
 
@@ -940,8 +939,6 @@ export default class GameManager extends Singleton {
       false,
       true
     );
-
-    console.log('affectedTiles', affectedTiles);
 
     await this.animationManager!.animateRainbowClickEffect(rainbowTile);
 
@@ -962,7 +959,7 @@ export default class GameManager extends Singleton {
       if (tile.node && tile.node.isValid) {
         tile.node.destroy();
       }
-      await new Promise(resolve => this.scheduleOnce(resolve, 0.05));
+      await new Promise(resolve => this.scheduleOnce(resolve, 0.02));
 
       const tilePosition = tileCoords.get(tile)!;
       if (tilePosition) {
