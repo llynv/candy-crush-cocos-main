@@ -64,13 +64,6 @@ export class ProgressManager extends Singleton {
 
     const milestoneCompleted = this.checkMilestoneCompletion();
 
-    console.log(
-      'Processed pending scores, total points:',
-      totalPoints,
-      'currentScore:',
-      this.currentScore
-    );
-
     this.eventTarget.emit('progress-updated', this.getMilestoneData());
 
     return milestoneCompleted;
@@ -92,8 +85,6 @@ export class ProgressManager extends Singleton {
     this.currentScore += points;
 
     const milestoneCompleted = this.checkMilestoneCompletion();
-
-    console.log('currentScore', this.currentScore);
 
     this.eventTarget.emit('progress-updated', this.getMilestoneData());
 

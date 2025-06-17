@@ -41,9 +41,10 @@ export class MilestoneAchievementUI extends Component {
   @property(Prefab)
   private confettiPrefab: Prefab | null = null;
 
-  public async showMilestoneAchievement(milestoneData: MilestoneData): Promise<void> {
-    console.log('Showing milestone achievement UI', milestoneData);
-
+  public async showMilestoneAchievement(
+    milestoneData: MilestoneData,
+    callback?: () => void
+  ): Promise<void> {
     this.updateLabels(milestoneData);
 
     this.node.active = true;
@@ -108,7 +109,7 @@ export class MilestoneAchievementUI extends Component {
     });
   }
 
-  private async animateExit(): Promise<void> {
+  private async animateExit(callback?: () => void): Promise<void> {
     if (!this.achievementPanel) return;
 
     return new Promise<void>(resolve => {
@@ -122,6 +123,7 @@ export class MilestoneAchievementUI extends Component {
         .to(0.3, { scale: new Vec3(0.8, 0.8, 0.8) }, { easing: 'quadIn' })
         .call(() => {
           resolve();
+          callback?.();
         })
         .start();
     });

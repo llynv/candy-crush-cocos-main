@@ -455,7 +455,6 @@ export class ProgressUI extends Component {
   public updateMovesDisplay(movesRemaining: number): void {
     if (!this.movesLabel) return;
 
-    console.log('movesRemaining', movesRemaining);
     const newText = `Moves: ${movesRemaining}`;
 
     if (this.movesLabel.string !== newText) {

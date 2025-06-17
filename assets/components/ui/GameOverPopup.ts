@@ -325,7 +325,6 @@ export class GameOverPopup extends Component {
    */
   public show(finalScore: number): void {
     if (this.isVisible) return;
-    console.log('GameOverPopup show called with score:', finalScore);
 
     this.currentScore = finalScore;
     this.checkAndUpdateHighScore();
@@ -369,6 +368,23 @@ export class GameOverPopup extends Component {
         .start();
     }
 
+    if (this.scoreLabel) {
+      let currentDisplayScore = 0;
+      tween(this.scoreLabel)
+        .to(
+          1.5,
+          {},
+          {
+            easing: 'quadOut',
+            onUpdate: (target, ratio) => {
+              currentDisplayScore = Number(this.currentScore) * (ratio ?? 0);
+              target!.string = Math.floor(currentDisplayScore).toLocaleString();
+            },
+          }
+        )
+        .start();
+    }
+
     this.animateScoreCounting();
   }
 
@@ -384,16 +400,9 @@ export class GameOverPopup extends Component {
     const steps = 60;
     const increment = targetScore / steps;
 
-    const updateScore = () => {
-      currentDisplayScore = Math.min(currentDisplayScore + increment, targetScore);
-      this.scoreLabel!.string = Math.floor(currentDisplayScore).toLocaleString();
-
-      if (currentDisplayScore < targetScore) {
-        setTimeout(updateScore, (duration * 1000) / steps);
-      }
-    };
-
-    setTimeout(updateScore, 800);
+    tween(this.scoreLabel)
+      .to(duration, { string: this.highScore.toLocaleString() }, { easing: 'quadOut' })
+      .start();
   }
 
   /**

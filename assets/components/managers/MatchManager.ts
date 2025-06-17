@@ -13,8 +13,6 @@ export class MatchManager extends Component {
 
     this.findShapeMatches(tileGrid, matches, processedTiles);
 
-    console.log('matches', matches);
-
     return matches;
   }
 

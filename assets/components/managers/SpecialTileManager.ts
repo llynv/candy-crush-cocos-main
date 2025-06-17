@@ -72,14 +72,6 @@ export class SpecialTileManager extends Component {
 
     const specialType = tile.getSpecialType();
     const tileGrid = this.boardManager!.getTileGrid();
-    console.log(
-      'Activating special tile:',
-      specialType,
-      'at coords:',
-      coords,
-      'isPlayerSwap:',
-      isPlayerSwap
-    );
 
     if (!coords) return [];
 
@@ -89,15 +81,6 @@ export class SpecialTileManager extends Component {
 
       case SpecialTileType.RAINBOW:
         return this.activateRainbowTile(tile, swapTile, tileGrid, isPlayerSwap, isRainbowClick);
-
-      case SpecialTileType.STRIPED_HORIZONTAL:
-        return this.activateStripedTile(coords.x, coords.y, tileGrid, 'horizontal');
-
-      case SpecialTileType.STRIPED_VERTICAL:
-        return this.activateStripedTile(coords.x, coords.y, tileGrid, 'vertical');
-
-      case SpecialTileType.WRAPPED:
-        return this.activateWrappedTile(coords.x, coords.y, tileGrid, tile);
 
       default:
         return [];
@@ -126,85 +109,6 @@ export class SpecialTileManager extends Component {
         }
       }
     }
-    return affectedTiles;
-  }
-
-  private activateStripedTile(
-    centerX: number,
-    centerY: number,
-    tileGrid: (Tile | undefined)[][],
-    direction: 'horizontal' | 'vertical'
-  ): Tile[] {
-    const affectedTiles: Tile[] = [];
-
-    if (direction === 'horizontal') {
-      for (let x = 0; x < GameConfig.GridWidth; x++) {
-        const tile = tileGrid[centerY][x];
-        if (tile && tile.node && tile.node.isValid) {
-          affectedTiles.push(tile);
-        }
-      }
-    } else {
-      for (let y = 0; y < GameConfig.GridHeight; y++) {
-        const tile = tileGrid[y][centerX];
-        if (tile && tile.node && tile.node.isValid) {
-          affectedTiles.push(tile);
-        }
-      }
-    }
-
-    return affectedTiles;
-  }
-
-  private activateWrappedTile(
-    centerX: number,
-    centerY: number,
-    tileGrid: (Tile | undefined)[][],
-    wrappedTile: Tile
-  ): Tile[] {
-    const affectedTiles: Tile[] = [];
-    const radius = SpecialTileConfig.WRAPPED.effectRadius || 2;
-
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        const x = centerX + dx;
-        const y = centerY + dy;
-
-        if (x >= 0 && x < GameConfig.GridWidth && y >= 0 && y < GameConfig.GridHeight) {
-          const tile = tileGrid[y][x];
-          if (tile && tile.node && tile.node.isValid) {
-            affectedTiles.push(tile);
-          }
-        }
-      }
-    }
-
-    setTimeout(async () => {
-      const secondWaveAffected: Tile[] = [];
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          const x = centerX + dx;
-          const y = centerY + dy;
-
-          if (x >= 0 && x < GameConfig.GridWidth && y >= 0 && y < GameConfig.GridHeight) {
-            const tile = tileGrid[y][x];
-            if (tile && tile.node && tile.node.isValid) {
-              secondWaveAffected.push(tile);
-            }
-          }
-        }
-      }
-
-      if (this.particleEffectManager && wrappedTile.node && wrappedTile.node.parent) {
-        const positions = secondWaveAffected.map(tile => tile.node.worldPosition);
-        await this.particleEffectManager?.playMultipleEffects(
-          positions,
-          'explosion',
-          wrappedTile.node.parent
-        );
-      }
-    }, 300);
-
     return affectedTiles;
   }
 
@@ -288,8 +192,6 @@ export class SpecialTileManager extends Component {
 
     affectedTiles.length = 0;
     affectedTiles.push(...result);
-
-    console.log('affectedTiles', affectedTiles);
 
     return affectedTiles;
   }

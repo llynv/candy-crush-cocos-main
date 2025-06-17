@@ -293,17 +293,14 @@ export class ParticleEffectManager extends Component {
     const tileColor = tile.getTileType().color;
     const effectPrefab = this.getParticleEffectPrefab(effectType);
 
-    console.log('effectPrefab', effectPrefab);
-
     if (!effectPrefab) return;
 
     const effectNode = instantiate(effectPrefab);
     effectNode.setParent(tile.node);
     tile.node.addChild(effectNode);
-    effectNode.setPosition(0, -20, 0);
+    effectNode.setPosition(0, 0, 0);
 
     const particleSystem = effectNode.getComponent(ParticleSystem2D);
-    console.log('particleSystem', particleSystem);
     if (particleSystem && effectType !== SpecialTileType.RAINBOW) {
       particleSystem.startColor = tileColor;
       particleSystem.startColorVar = new Color(0, 0, 0, 255);
