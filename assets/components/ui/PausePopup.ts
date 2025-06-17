@@ -13,6 +13,7 @@ import {
   EventHandler,
   Toggle,
   AudioSource,
+  Tween,
 } from 'cc';
 
 const { ccclass, property } = _decorator;
@@ -163,7 +164,6 @@ export class PausePopup extends Component {
    * Show popup with animation
    */
   public show(): void {
-    console.log(`show: ${this.isVisible}`);
     if (this.isVisible) return;
 
     this.isVisible = true;
@@ -189,13 +189,15 @@ export class PausePopup extends Component {
     }
 
     if (this.popupPanel) {
+      Tween.stopAllByTarget(this.popupPanel);
+
       const panelOpacity = this.popupPanel.getComponent(UIOpacity)!;
 
-      tween(panelOpacity).to(0.2, { opacity: 255 }, { easing: 'quadOut' }).start();
-
       tween(this.popupPanel)
-        .to(0.3, { scale: new Vec3(1.2, 1.2, 1) }, { easing: 'backOut' })
-        .to(0.2, { scale: new Vec3(1, 1, 1) }, { easing: 'quadOut' })
+        .parallel(
+          tween(this.popupPanel).to(0.6, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' }),
+          tween(panelOpacity).to(0.3, { opacity: 255 }, { easing: 'quadOut' })
+        )
         .start();
     }
   }
@@ -275,8 +277,6 @@ export class PausePopup extends Component {
       audioSources.forEach(audio => {
         audio.volume = soundEnabled ? 1.0 : 0.0;
       });
-
-      console.log('Sound toggled:', soundEnabled ? 'ON' : 'OFF');
     }
   }
 
