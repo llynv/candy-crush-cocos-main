@@ -63,19 +63,19 @@ export class AnimationManager extends Component {
 
     tween(tile1.node)
       .to(
-        0.15,
+        0.11,
         {
           position: new Vec3(tile2.node.x, tile2.node.y, tile1.node.position.z),
           scale: new Vec3(1.85, 1.85, 1.0),
         },
         { easing: 'linear' }
       )
-      .to(0.15, { scale: new Vec3(1.0, 1.0, 1.0) }, { easing: 'linear' })
+      .to(0.1, { scale: new Vec3(1.0, 1.0, 1.0) }, { easing: 'linear' })
       .start();
 
     tween(tile2.node)
       .to(
-        0.3,
+        0.2,
         {
           position: new Vec3(tile1.node.x, tile1.node.y, tile2.node.position.z),
         },
@@ -375,8 +375,7 @@ export class AnimationManager extends Component {
 
   public animateDestroy(callback?: () => void, resolve?: () => void): void {
     tween(this.node)
-      .to(0.1, { scale: new Vec3(1.1, 1.1, 1.1) }, { easing: 'quadOut' })
-      .to(0.15, { scale: new Vec3(0, 0, 0) }, { easing: 'quadIn' })
+      .to(0.1, { scale: new Vec3(0, 0, 0) }, { easing: 'quadIn' })
       .call(() => {
         callback?.();
         resolve?.();
@@ -389,7 +388,8 @@ export class AnimationManager extends Component {
    */
   public async animateMilestoneCelebration(
     tileGrid: (Tile | undefined)[][],
-    centerNode: Node
+    centerNode: Node,
+    callback?: () => void
   ): Promise<void> {
     if (!this.boardManager) {
       throw new Error('BoardManager not set');
@@ -496,7 +496,10 @@ export class AnimationManager extends Component {
               .to(returnPhase * 0.2, { scale: new Vec3(1.1, 1.1, 1) }, { easing: 'quadOut' })
               .to(returnPhase * 0.8, { scale: new Vec3(1, 1, 1) }, { easing: 'bounceOut' })
           )
-          .call(() => resolve())
+          .call(() => {
+            resolve();
+            callback?.();
+          })
           .start();
       });
     });
@@ -583,8 +586,13 @@ export class AnimationManager extends Component {
 
     const flyDownRapid = (tile: Tile) =>
       new Promise<void>(resolve => {
+        const scale = tile.node.scale.clone();
         tween(tile.node)
-          .to(0.25, { position: new Vec3(pos2Local.x, pos2Local.y, 0) }, { easing: 'quadOut' })
+          .to(
+            0.25,
+            { position: new Vec3(pos2Local.x, pos2Local.y, 0), scale: scale.multiplyScalar(0.85) },
+            { easing: 'quadOut' }
+          )
           .call(() => resolve())
           .start();
       });
