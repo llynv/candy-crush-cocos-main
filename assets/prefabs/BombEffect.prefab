@@ -110,19 +110,19 @@
       "a": 255
     },
     "duration": -1,
-    "emissionRate": 200,
-    "life": 0.1,
-    "lifeVar": 0.1,
-    "angle": 90,
-    "angleVar": 30,
-    "startSize": 8,
-    "startSizeVar": 2,
-    "endSize": 28,
-    "endSizeVar": 8,
+    "emissionRate": 25,
+    "life": 0.2,
+    "lifeVar": 1,
+    "angle": 0,
+    "angleVar": 360,
+    "startSize": 12,
+    "startSizeVar": 6,
+    "endSize": 35,
+    "endSizeVar": 12,
     "startSpin": 0,
-    "startSpinVar": 90,
-    "endSpin": 0,
-    "endSpinVar": 90,
+    "startSpinVar": 360,
+    "endSpin": 720,
+    "endSpinVar": 360,
     "sourcePos": {
       "__type__": "cc.Vec2",
       "x": 0,
@@ -137,14 +137,14 @@
     "gravity": {
       "__type__": "cc.Vec2",
       "x": 0,
-      "y": 80
+      "y": -10
     },
-    "speed": 220,
-    "speedVar": 30,
-    "tangentialAccel": 0,
-    "tangentialAccelVar": 8,
-    "radialAccel": 0,
-    "radialAccelVar": 0,
+    "speed": 20,
+    "speedVar": 10,
+    "tangentialAccel": 10,
+    "tangentialAccelVar": 20,
+    "radialAccel": 20,
+    "radialAccelVar": 15,
     "rotationIsDir": false,
     "startRadius": 6,
     "startRadiusVar": 4,
@@ -165,7 +165,7 @@
       "__uuid__": "f12a23c4-b924-4322-a260-3d982428f1e8@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
-    "_totalParticles": 150,
+    "_totalParticles": 100,
     "_startColor": {
       "__type__": "cc.Color",
       "r": 255,
@@ -210,7 +210,6 @@
       "__id__": 0
     },
     "fileId": "d3ieR24nNCHKjamHaxsjYW",
-    "instance": null,
-    "targetOverrides": null
+    "instance": null
   }
 ]

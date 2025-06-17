@@ -137,10 +137,10 @@
     "gravity": {
       "__type__": "cc.Vec2",
       "x": 0,
-      "y": -400
+      "y": 0
     },
-    "speed": 200,
-    "speedVar": 80,
+    "speed": -100,
+    "speedVar": 0,
     "tangentialAccel": 0,
     "tangentialAccelVar": 20,
     "radialAccel": 0,

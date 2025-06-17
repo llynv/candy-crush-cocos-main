@@ -187,7 +187,6 @@ export class Tile extends Component {
         console.error(`Failed to load atlas: ${err}`);
         return;
       }
-      console.log('updateNormalAppearance', this.tileType?.name);
       if (!this.tileType) {
         console.error('Tile type is not set');
         return;
@@ -221,7 +220,6 @@ export class Tile extends Component {
       const uiTransform = this.sprite!.node.getComponent(UITransform);
       uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
 
-      console.log('updateBombAppearance', this.specialType);
     });
   }
 
@@ -279,7 +277,6 @@ export class Tile extends Component {
         console.error('Sprite frame for Rainbow Candy not found in atlas');
       }
 
-      console.log('updateRainbowAppearance', this.specialType);
 
       const uiTransform = this.sprite!.node.getComponent(UITransform);
       uiTransform!.setContentSize(GameConfig.SpriteSize, GameConfig.SpriteSize);
