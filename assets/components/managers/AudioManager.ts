@@ -1,5 +1,4 @@
-import { _decorator, AudioClip, AudioSource } from 'cc';
-import { Singleton } from '../patterns/Singleton';
+import { _decorator, AudioClip, AudioSource, Component } from 'cc';
 const { ccclass, property } = _decorator;
 
 export enum AudioType {
@@ -16,7 +15,7 @@ export enum AudioType {
 }
 
 @ccclass('AudioManager')
-export class AudioManager extends Singleton {
+export class AudioManager extends Component {
   @property(AudioSource)
   private musicSource!: AudioSource;
 
@@ -34,12 +33,18 @@ export class AudioManager extends Singleton {
 
   private audioMap: Map<AudioType, AudioClip> = new Map();
 
-  protected onLoad(): void {
-    this.initializeAudioMap();
+  private music: AudioSource | null = null;
 
-    this.musicSource.loop = true;
-    this.musicSource.playOnAwake = true;
-    this.musicSource.volume = this.musicVolume;
+  protected initialize(): void {
+    this.initializeAudioMap();
+    this.setupMusicSource();
+  }
+
+  private setupMusicSource(): void {
+    if (this.musicSource) {
+      this.musicSource.loop = true;
+      this.musicSource.volume = this.isMuted ? 0 : this.musicVolume;
+    }
   }
 
   private initializeAudioMap(): void {
@@ -51,43 +56,72 @@ export class AudioManager extends Singleton {
   }
 
   public playMusic(type: AudioType = AudioType.BACKGROUND_MUSIC, loop: boolean = true): void {
-    if (this.isMuted || !this.musicSource) return;
+    if (!this.musicSource) {
+      console.warn('AudioManager: musicSource not initialized');
+      return;
+    }
+
+    if (this.isMuted) return;
 
     const clip = this.audioMap.get(type);
-    if (!clip) return;
+    if (!clip) {
+      console.warn('AudioManager: clip not found for type', type);
+      return;
+    }
 
-    this.musicSource?.play();
+    this.musicSource.clip = clip;
+    this.musicSource.loop = loop;
+    this.musicSource.play();
   }
 
   public stopMusic(): void {
-    this.musicSource?.stop();
+    if (this.musicSource) {
+      this.musicSource.stop();
+    }
   }
 
   public pauseMusic(): void {
-    this.musicSource?.pause();
+    if (this.musicSource) {
+      this.musicSource.pause();
+    }
   }
 
   public resumeMusic(): void {
-    this.musicSource?.play();
+    if (this.musicSource) {
+      this.musicSource.play();
+    }
   }
 
   public setMute(mute: boolean): void {
     this.isMuted = mute;
 
+    console.log(
+      `mute: ${mute} - volume: ${this.musicVolume} - MusicSource exists: ${!!this.musicSource}`
+    );
+
+    this.musicSource.volume = mute ? 0 : this.musicVolume;
     if (this.musicSource) {
-      if (mute) {
-        this.musicSource.pause();
-      } else {
-        this.musicSource.play();
-      }
     }
   }
 
   public setMusicVolume(volume: number): void {
     this.musicVolume = Math.max(0, Math.min(1, volume));
+
     if (this.musicSource) {
-      this.musicSource.volume = this.musicVolume;
+      this.musicSource.volume = this.isMuted ? 0 : this.musicVolume;
     }
+  }
+
+  public toggleMute(): void {
+    this.setMute(!this.isMuted);
+  }
+
+  public isMusicMuted(): boolean {
+    return this.isMuted;
+  }
+
+  public getMusicVolume(): number {
+    return this.musicVolume;
   }
 
   // public setEffectsVolume(volume: number): void {

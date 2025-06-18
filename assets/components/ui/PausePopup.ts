@@ -15,6 +15,7 @@ import {
   AudioSource,
   Tween,
 } from 'cc';
+import { AudioManager } from '../managers/AudioManager';
 
 const { ccclass, property } = _decorator;
 
@@ -38,13 +39,12 @@ export class PausePopup extends Component {
   @property(Label)
   private titleLabel: Label | null = null;
 
+  @property(AudioManager)
+  private audioManager: AudioManager | null = null;
+
   private isVisible = false;
   private onContinueCallback: (() => void) | null = null;
   private onNewGameCallback: (() => void) | null = null;
-
-  // protected __preload(): void {
-  //   if (!this.popupPanel) {
-  // }
 
   protected start(): void {
     this.isVisible = false;
@@ -272,12 +272,9 @@ export class PausePopup extends Component {
   public onSoundToggled(): void {
     if (this.soundToggle) {
       const soundEnabled = this.soundToggle.isChecked;
+      this.audioManager!.setMute(!soundEnabled);
 
-      const audioSources = this.node.getComponentsInChildren(AudioSource);
-
-      for (const audio of audioSources) {
-        audio.volume = soundEnabled ? 1.0 : 0.0;
-      }
+      console.log(`Sound toggled: ${soundEnabled ? 'enabled' : 'disabled'}`);
     }
   }
 
@@ -285,7 +282,10 @@ export class PausePopup extends Component {
    * Get current sound state
    */
   public isSoundEnabled(): boolean {
-    return this.soundToggle ? this.soundToggle.isChecked : true;
+    if (this.soundToggle) {
+      return this.soundToggle.isChecked;
+    }
+    return !this.audioManager!.isMusicMuted();
   }
 
   /**
@@ -294,12 +294,11 @@ export class PausePopup extends Component {
   public setSoundEnabled(enabled: boolean): void {
     if (this.soundToggle) {
       this.soundToggle.isChecked = enabled;
-      this.onSoundToggled();
+      this.audioManager!.setMute(!enabled);
     }
   }
 
   protected onDestroy(): void {
-    // Clean up button events
     if (this.continueButton?.node) {
       this.continueButton.node.off(Node.EventType.TOUCH_END);
     }
