@@ -274,9 +274,10 @@ export class PausePopup extends Component {
       const soundEnabled = this.soundToggle.isChecked;
 
       const audioSources = this.node.getComponentsInChildren(AudioSource);
-      audioSources.forEach(audio => {
+
+      for (const audio of audioSources) {
         audio.volume = soundEnabled ? 1.0 : 0.0;
-      });
+      }
     }
   }
 

@@ -63,8 +63,6 @@ export class MilestoneAchievementUI extends Component {
 
     await this.animateEntrance();
 
-    this.confettiSystem!.createCelebrationConfetti();
-
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     await this.animateExit();

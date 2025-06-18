@@ -319,10 +319,10 @@ export class ParticleEffectManager extends Component {
   }
 
   protected onDestroy(): void {
-    this.node.children.forEach(child => {
+    for (const child of this.node.children) {
       if (child.isValid) {
         child.destroy();
       }
-    });
+    }
   }
 }

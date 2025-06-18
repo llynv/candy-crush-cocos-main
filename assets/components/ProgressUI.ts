@@ -147,19 +147,21 @@ export class ProgressUI extends Component {
   private updateProgressBarColor(progress: number): void {
     if (!this.progressBar?.barSprite) return;
 
-    let color: Color;
-
-    if (progress < 0.3) {
-      color = new Color(255, Math.floor(165 * (progress / 0.3)), 0, 255);
-    } else if (progress < 0.7) {
-      const t = (progress - 0.3) / 0.4;
-      color = new Color(255, Math.floor(165 + 90 * t), 0, 255);
-    } else {
-      const t = (progress - 0.7) / 0.3;
-      color = new Color(Math.floor(255 - 255 * t), 255, Math.floor(100 * t), 255);
-    }
+    const color = this.getProgressBarColor(progress);
 
     this.progressBar.barSprite.color = color;
+  }
+
+  private getProgressBarColor(progress: number): Color {
+    if (progress < 0.3) {
+      return new Color(255, Math.floor(165 * (progress / 0.3)), 0, 255);
+    } else if (progress < 0.7) {
+      const t = (progress - 0.3) / 0.4;
+      return new Color(255, Math.floor(165 + 90 * t), 0, 255);
+    } else {
+      const t = (progress - 0.7) / 0.3;
+      return new Color(Math.floor(255 - 255 * t), 255, Math.floor(100 * t), 255);
+    }
   }
 
   private addUIBackgrounds(): void {
@@ -439,7 +441,6 @@ export class ProgressUI extends Component {
       tween(this.celebrationNode).stop();
     }
 
-    // Clean up backgrounds
     if (this.scoreBackground && this.scoreBackground.isValid) {
       tween(this.scoreBackground).stop();
       this.scoreBackground.destroy();
@@ -462,17 +463,20 @@ export class ProgressUI extends Component {
     }
   }
 
+  private getMovesLabelColor(movesRemaining: number): Color {
+    if (movesRemaining <= 5) {
+      return new Color(255, 69, 0, 255);
+    } else if (movesRemaining <= 10) {
+      return new Color(255, 165, 0, 255);
+    } else {
+      return new Color(255, 255, 255, 255);
+    }
+  }
+
   private animateMovesChange(movesRemaining: number, newText: string): void {
     if (!this.movesLabel) return;
 
-    let textColor: Color;
-    if (movesRemaining <= 5) {
-      textColor = new Color(255, 69, 0, 255);
-    } else if (movesRemaining <= 10) {
-      textColor = new Color(255, 165, 0, 255);
-    } else {
-      textColor = new Color(255, 255, 255, 255);
-    }
+    const textColor = this.getMovesLabelColor(movesRemaining);
 
     tween(this.movesLabel)
       .to(0.1, { color: new Color(255, 255, 255, 255) })

@@ -128,13 +128,13 @@ export class SpecialTileManager extends Component {
     if (!isPlayerSwap) return [];
 
     if (targetTile.isRainbowTile()) {
-      tileGrid.forEach(row => {
-        row.forEach(tile => {
+      for (const row of tileGrid) {
+        for (const tile of row) {
           if (tile && tile.node && tile.node.isValid) {
             affectedTiles.push(tile);
           }
-        });
-      });
+        }
+      }
       return affectedTiles;
     }
 

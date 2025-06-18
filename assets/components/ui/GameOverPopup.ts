@@ -544,13 +544,13 @@ export class GameOverPopup extends Component {
       tween(this.popupPanel).stop();
 
       const particles = this.popupPanel.children.filter(child => child.name.startsWith('Particle'));
-      particles.forEach(particle => {
+      for (const particle of particles) {
         tween(particle).stop();
         const sprite = particle.getComponent(Sprite);
         if (sprite) {
           tween(sprite).stop();
         }
-      });
+      }
 
       const glowBorder = this.popupPanel.getChildByName('GlowBorder');
       if (glowBorder) {

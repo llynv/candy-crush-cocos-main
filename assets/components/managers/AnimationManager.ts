@@ -9,6 +9,7 @@ import {
   instantiate,
   UITransform,
   Tween,
+  Vec2,
 } from 'cc';
 import { Tile } from '../Tile';
 import { GameConfig } from '../../constants/GameConfig';
@@ -99,7 +100,7 @@ export class AnimationManager extends Component {
       child.setScale(1, 1, 1);
     }
 
-    fallTasks.forEach(task => {
+    for (const task of fallTasks) {
       const { tile, fromY, toY, x, isNewTile } = task;
 
       const finalPosition = this.boardManager!.getWorldPosition({ x, y: toY });
@@ -110,12 +111,12 @@ export class AnimationManager extends Component {
         const currentPosition = this.boardManager!.getWorldPosition({ x, y: fromY });
         tile.node.setPosition(currentPosition.x, currentPosition.y, 0);
       }
-    });
+    }
 
     const baseFallDuration = 0.1;
     const animationPromises: Promise<void>[] = [];
 
-    fallTasks.forEach((task, index) => {
+    for (const task of fallTasks) {
       const { tile, toY, x, isNewTile, fromY } = task;
       const finalPosition = this.boardManager!.getWorldPosition({ x, y: toY });
 
@@ -125,36 +126,47 @@ export class AnimationManager extends Component {
         const fallDistance = isNewTile ? Math.abs(fromY - toY) : Math.abs(fromY - toY);
         const fallDuration = baseFallDuration + fallDistance * 0.02;
 
-        let tweenChain = tween(tile.node);
+        const tweenChain = this.getTweenChain(tile, finalPosition, isNewTile, delay, fallDuration);
 
-        if (delay > 0) {
-          tweenChain = tweenChain.delay(delay);
-        }
-
-        if (isNewTile) {
-          tweenChain = tweenChain.to(
-            0.1,
-            { scale: new Vec3(1.0, 1.0, 1.0) },
-            { easing: 'backOut' }
-          );
-        }
-
-        tweenChain
-          .to(
-            fallDuration,
-            { position: new Vec3(finalPosition.x, finalPosition.y, 0) },
-            { easing: 'quartIn' }
-          )
-          .to(0.1, { scale: new Vec3(1.05, 0.95, 1.0) }, { easing: 'quadOut' })
-          .to(0.1, { scale: new Vec3(1.0, 1.0, 1.0) }, { easing: 'backOut' })
-          .call(() => resolve())
-          .start();
+        tweenChain.call(() => resolve());
+        tweenChain.start();
       });
 
       animationPromises.push(animationPromise);
-    });
+    }
 
     await Promise.all(animationPromises);
+  }
+
+  private getTweenChain(
+    tile: Tile,
+    finalPosition: { x: number; y: number },
+    isNewTile: boolean,
+    delay: number,
+    fallDuration: number
+  ): Tween {
+    const tweenChain = tween(tile.node).delay(delay);
+
+    if (isNewTile) {
+      return tweenChain
+        .to(0.1, { scale: new Vec3(1.0, 1.0, 1.0) }, { easing: 'backOut' })
+        .to(
+          fallDuration,
+          { position: new Vec3(finalPosition.x, finalPosition.y, 0) },
+          { easing: 'quartIn' }
+        )
+        .to(0.1, { scale: new Vec3(1.05, 0.95, 1.0) }, { easing: 'quadOut' })
+        .to(0.1, { scale: new Vec3(1.0, 1.0, 1.0) }, { easing: 'backOut' });
+    }
+
+    return tweenChain
+      .to(
+        fallDuration,
+        { position: new Vec3(finalPosition.x, finalPosition.y, 0) },
+        { easing: 'quartIn' }
+      )
+      .to(0.1, { scale: new Vec3(1.05, 0.95, 1.0) }, { easing: 'quadOut' })
+      .to(0.1, { scale: new Vec3(1.0, 1.0, 1.0) }, { easing: 'backOut' });
   }
 
   public async animateIdleTiles(tileGrid: (Tile | undefined)[][]): Promise<void> {
@@ -460,11 +472,11 @@ export class AnimationManager extends Component {
     virtualContainer.setPosition(centerPos);
     virtualContainer.setSiblingIndex(this.rotationContainer!.getSiblingIndex());
 
-    originalData.forEach(d => {
+    for (const d of originalData) {
       const worldPos = d.tile.node.getWorldPosition();
       d.tile.node.setParent(virtualContainer);
       d.tile.node.setWorldPosition(worldPos);
-    });
+    }
 
     await new Promise<void>(resolve => {
       tween(virtualContainer)
@@ -473,11 +485,11 @@ export class AnimationManager extends Component {
         .start();
     });
 
-    originalData.forEach(d => {
+    for (const d of originalData) {
       const worldPos = d.tile.node.getWorldPosition();
       d.tile.node.setParent(d.originalParent);
       d.tile.node.setWorldPosition(worldPos);
-    });
+    }
 
     virtualContainer.destroy();
 
