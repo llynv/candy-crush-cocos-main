@@ -74,7 +74,7 @@ export class ConfettiParticle extends Component {
   /**
    * Initialize and launch the confetti particle
    */
-  public launch(config: Partial<ConfettiConfig> = {}): void {
+  public launch(config: ConfettiConfig): void {
     this.setupParticle(config);
     this.isActive = true;
     this.startTime = Date.now() / 1000;
@@ -84,29 +84,8 @@ export class ConfettiParticle extends Component {
   /**
    * Set up the particle with configuration
    */
-  private setupParticle(config: Partial<ConfettiConfig>): void {
-    const defaultConfig: ConfettiConfig = {
-      initialVelocityMin: new Vec3(-40, 400, 0),
-      initialVelocityMax: new Vec3(40, 500, 0),
-      gravity: this.GRAVITY_PIXELS,
-      airDensity: 1.225,
-      rotationSpeed: 360,
-      lifetime: 5.0,
-      colors: [
-        new Color(255, 215, 0),
-        new Color(255, 20, 147),
-        new Color(0, 191, 255),
-        new Color(50, 205, 50),
-        new Color(255, 165, 0),
-        new Color(138, 43, 226),
-        new Color(255, 69, 0),
-        new Color(255, 105, 180),
-      ],
-      shapes: ['rectangle', 'square'],
-      massRange: { min: 0.0015, max: 0.002 }, // kg - very light confetti pieces
-    };
-
-    const finalConfig = { ...defaultConfig, ...config };
+  private setupParticle(config: ConfettiConfig): void {
+    const finalConfig = { ...config };
 
     this.velocity = new Vec3(
       randomRange(finalConfig.initialVelocityMin.x, finalConfig.initialVelocityMax.x),
@@ -155,7 +134,7 @@ export class ConfettiParticle extends Component {
         break;
       case 'square':
         width = height = 12;
-        this.dragCoefficient = 1.05; // Square has high drag
+        this.dragCoefficient = 1.05;
         break;
     }
 
@@ -236,7 +215,7 @@ export class ConfettiParticle extends Component {
     }
 
     const currentSpeed = this.velocity.length();
-    if (currentSpeed > -this.terminalVelocity * 1.1) {
+    if (currentSpeed > -this.terminalVelocity) {
       // Apply force to update velocity: F = ma, so a = F/m
       // Since our forces are already in acceleration units (pixels/s²), we can apply directly
       this.velocity.x += netForce.x * deltaTime;
@@ -314,13 +293,7 @@ export class ConfettiParticle extends Component {
    * Destroy the particle
    */
   public destroyParticle(): void {
-    this.isActive = false;
-
-    if (this.destroyCallback) {
-      this.destroyCallback();
-    }
-
-    this.node.active = false;
+    this.node.destroy();
   }
 
   /**
@@ -359,5 +332,11 @@ export class ConfettiParticle extends Component {
     this.isActive = false;
     this.velocity.set(0, 0, 0);
     this.angularVelocity = 0;
+  }
+
+  protected onDestroy(): void {
+    if (this.destroyCallback) {
+      this.destroyCallback();
+    }
   }
 }

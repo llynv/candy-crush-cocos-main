@@ -89,6 +89,8 @@ export default class GameManager extends Singleton {
     this.setupProgressManager();
     this.createBoard();
     this.setupPauseButton();
+
+    this.confettiSystem!.createCelebrationConfetti();
   }
 
   protected update(dt: number): void {

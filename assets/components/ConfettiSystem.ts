@@ -10,6 +10,7 @@ import {
   randomRangeInt,
   UITransform,
   Sprite,
+  Canvas,
 } from 'cc';
 import { ConfettiParticle, ConfettiConfig } from './ConfettiParticle';
 
@@ -28,6 +29,11 @@ export class ConfettiSystem extends Component {
   @property(Prefab)
   private confettiParticlePrefab: Prefab | null = null;
 
+  @property(Node)
+  private leftNode: Node | null = null;
+  @property(Node)
+  private rightNode: Node | null = null;
+
   private activeParticles: ConfettiParticle[] = [];
 
   /**
@@ -42,10 +48,7 @@ export class ConfettiSystem extends Component {
   /**
    * Spawn a single confetti particle at a position
    */
-  public spawnConfettiParticle(
-    position: Vec3,
-    config: Partial<ConfettiConfig> = {}
-  ): ConfettiParticle {
+  public spawnConfettiParticle(position: Vec3, config: ConfettiConfig): ConfettiParticle {
     const particleNode = this.createParticleNode();
     particleNode.active = true;
     const confettiParticle = particleNode.getComponent(ConfettiParticle);
@@ -70,9 +73,9 @@ export class ConfettiSystem extends Component {
   /**
    * Create a confetti burst at a specific position
    */
-  public createConfettiBurst(position: Vec3, config: Partial<ConfettiSystemConfig> = {}): void {
+  public createConfettiBurst(config: Partial<ConfettiSystemConfig> = {}): void {
     const defaultConfig: ConfettiSystemConfig = {
-      particleCount: 35,
+      particleCount: config.particleCount || 35,
       spawnRadius: 100,
       burstDuration: 0,
       colors: [
@@ -83,7 +86,7 @@ export class ConfettiSystem extends Component {
         new Color(255, 165, 0),
         new Color(138, 43, 226),
       ],
-      intensity: 'heavy',
+      intensity: config.intensity || 'heavy',
     };
 
     const finalConfig = { ...defaultConfig, ...config };
@@ -94,12 +97,18 @@ export class ConfettiSystem extends Component {
 
     for (let i = 0; i < particleCount; i++) {
       this.scheduleOnce(() => {
-        const tightRadius = finalConfig.spawnRadius * 0.3;
-        const spawnPos = this.getRandomSpawnPosition(position, tightRadius);
-        const particleConfig = this.getParticleConfig(finalConfig);
-        this.spawnConfettiParticle(spawnPos, particleConfig);
+        const leftSpawnPos = this.getEdgeToCenterSpawnPosition('left');
+        const rightSpawnPos = this.getEdgeToCenterSpawnPosition('right');
+        const leftParticleConfig = this.getParticleConfig(finalConfig, 'left');
+        const rightParticleConfig = this.getParticleConfig(finalConfig, 'right');
+        this.spawnConfettiParticle(leftSpawnPos, leftParticleConfig);
+        this.spawnConfettiParticle(rightSpawnPos, rightParticleConfig);
       }, i * burstInterval);
     }
+  }
+
+  private getEdgeToCenterSpawnPosition(direction: 'left' | 'right'): Vec3 {
+    return direction === 'left' ? this.leftNode?.position! : this.rightNode?.position!;
   }
 
   private getParticleCount(config: ConfettiSystemConfig): number {
@@ -117,46 +126,45 @@ export class ConfettiSystem extends Component {
    * Create a celebration confetti effect (multiple bursts)
    */
   public createCelebrationConfetti(): void {
-    const screenBounds = this.getScreenBounds();
-    const burstPositions = [
-      new Vec3(screenBounds.left + 100, screenBounds.top - 100, 0),
-      new Vec3(screenBounds.right - 100, screenBounds.top - 100, 0),
-      new Vec3(screenBounds.center.x, screenBounds.top - 50, 0),
-      new Vec3(screenBounds.left + 200, screenBounds.top - 200, 0),
-      new Vec3(screenBounds.right - 200, screenBounds.top - 200, 0),
-    ];
-
-    for (const [index, position] of burstPositions.entries()) {
-      this.scheduleOnce(() => {
-        this.createConfettiBurst(position, {
-          particleCount: 40,
-          intensity: 'medium',
-        });
-      }, index * 0.1);
-    }
+    this.createConfettiBurst({
+      particleCount: 50,
+      intensity: 'medium',
+    });
   }
 
   /**
    * Get particle configuration based on system config
    */
-  private getParticleConfig(systemConfig: ConfettiSystemConfig): Partial<ConfettiConfig> {
+  private getParticleConfig(
+    systemConfig: ConfettiSystemConfig,
+    direction: 'left' | 'right'
+  ): ConfettiConfig {
     const velocityMultiplier =
       systemConfig.intensity === 'heavy' ? 1.2 : systemConfig.intensity === 'light' ? 0.8 : 1.0;
 
-    const baseUpwardVelocity = 200 * velocityMultiplier;
-    const maxUpwardVelocity = 500 * velocityMultiplier;
-    const maxOutwardVelocity = 300 * velocityMultiplier;
+    const baseUpwardVelocity = 1000 * velocityMultiplier;
+    const maxUpwardVelocity = 1000 * velocityMultiplier;
+    const minOutwardVelocity = 100 * velocityMultiplier;
+    const maxOutwardVelocity = 500 * velocityMultiplier;
 
     return {
-      initialVelocityMin: new Vec3(-maxOutwardVelocity, baseUpwardVelocity, 0),
-      initialVelocityMax: new Vec3(maxOutwardVelocity, maxUpwardVelocity, 0),
+      initialVelocityMin: new Vec3(
+        direction === 'left' ? minOutwardVelocity : -maxOutwardVelocity,
+        baseUpwardVelocity,
+        0
+      ),
+      initialVelocityMax: new Vec3(
+        direction === 'left' ? maxOutwardVelocity : -minOutwardVelocity,
+        maxUpwardVelocity,
+        0
+      ),
       colors: systemConfig.colors,
       lifetime: systemConfig.intensity === 'heavy' ? 7.0 : 6.0,
-      gravity: 600,
-      airDensity: 1.5,
+      gravity: 900,
+      airDensity: 2.4,
       shapes: ['square', 'rectangle'],
-      massRange: { min: 0.0005, max: 0.0015 },
-      rotationSpeed: 540,
+      massRange: { min: 0.0015, max: 0.003 },
+      rotationSpeed: 240,
     };
   }
 
