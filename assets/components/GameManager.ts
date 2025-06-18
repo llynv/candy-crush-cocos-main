@@ -637,7 +637,9 @@ export default class GameManager extends Singleton {
       );
 
       if (affectedTiles.length > 0) {
-        affectedTiles.forEach(tile => matchTiles.add(tile));
+        for (const tile of affectedTiles) {
+          matchTiles.add(tile);
+        }
       }
 
       const ranbowSwapCount = this.swappedTiles.filter(t => t.isRainbowTile()).length;
@@ -730,7 +732,9 @@ export default class GameManager extends Singleton {
         if (isMatchSpecial) {
           this.handleCombineTile(match, tileCoords, combineCallbacks, centerTile);
         } else {
-          match.forEach(tile => matchTiles.add(tile));
+          for (const tile of match) {
+            matchTiles.add(tile);
+          }
         }
         ProgressManager.getInstance().addPendingScore(match.length, match.length);
       }
