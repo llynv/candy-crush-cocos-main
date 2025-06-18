@@ -18,10 +18,7 @@ export enum AudioType {
 @ccclass('AudioManager')
 export class AudioManager extends Singleton {
   @property(AudioSource)
-  private musicSource: AudioSource | null = null;
-
-  @property(AudioSource)
-  private effectSource: AudioSource | null = null;
+  private musicSource!: AudioSource;
 
   @property([AudioClip])
   private audioClips: AudioClip[] = [];
@@ -39,6 +36,10 @@ export class AudioManager extends Singleton {
 
   protected onLoad(): void {
     this.initializeAudioMap();
+
+    this.musicSource.loop = true;
+    this.musicSource.playOnAwake = true;
+    this.musicSource.volume = this.musicVolume;
   }
 
   private initializeAudioMap(): void {
@@ -55,37 +56,19 @@ export class AudioManager extends Singleton {
     const clip = this.audioMap.get(type);
     if (!clip) return;
 
-    this.musicSource.clip = clip;
-    this.musicSource.loop = loop;
-    this.musicSource.volume = this.musicVolume;
-    this.musicSource.play();
-  }
-
-  public playEffect(type: AudioType, volume: number = 1.0): void {
-    if (this.isMuted || !this.effectSource) return;
-
-    const clip = this.audioMap.get(type);
-    if (!clip) return;
-
-    this.effectSource.playOneShot(clip, volume * this.audioVolume);
+    this.musicSource?.play();
   }
 
   public stopMusic(): void {
-    if (this.musicSource) {
-      this.musicSource.stop();
-    }
+    this.musicSource?.stop();
   }
 
   public pauseMusic(): void {
-    if (this.musicSource) {
-      this.musicSource.pause();
-    }
+    this.musicSource?.pause();
   }
 
   public resumeMusic(): void {
-    if (this.musicSource && !this.isMuted) {
-      this.musicSource.play();
-    }
+    this.musicSource?.play();
   }
 
   public setMute(mute: boolean): void {
@@ -107,43 +90,43 @@ export class AudioManager extends Singleton {
     }
   }
 
-  public setEffectsVolume(volume: number): void {
-    this.audioVolume = Math.max(0, Math.min(1, volume));
-  }
+  // public setEffectsVolume(volume: number): void {
+  //   this.audioVolume = Math.max(0, Math.min(1, volume));
+  // }
 
-  public playTileMatchSound(): void {
-    this.playEffect(AudioType.TILE_MATCH);
-  }
+  // public playTileMatchSound(): void {
+  //   this.playEffect(AudioType.TILE_MATCH);
+  // }
 
-  public playTileSwapSound(): void {
-    this.playEffect(AudioType.TILE_SWAP);
-  }
+  // public playTileSwapSound(): void {
+  //   this.playEffect(AudioType.TILE_SWAP);
+  // }
 
-  public playTileSelectSound(): void {
-    this.playEffect(AudioType.TILE_SELECT);
-  }
+  // public playTileSelectSound(): void {
+  //   this.playEffect(AudioType.TILE_SELECT);
+  // }
 
-  public playSpecialTileCreatedSound(): void {
-    this.playEffect(AudioType.SPECIAL_TILE_CREATED);
-  }
+  // public playSpecialTileCreatedSound(): void {
+  //   this.playEffect(AudioType.SPECIAL_TILE_CREATED);
+  // }
 
-  public playSpecialTileActivatedSound(): void {
-    this.playEffect(AudioType.SPECIAL_TILE_ACTIVATED);
-  }
+  // public playSpecialTileActivatedSound(): void {
+  //   this.playEffect(AudioType.SPECIAL_TILE_ACTIVATED);
+  // }
 
-  public playMilestoneCompletedSound(): void {
-    this.playEffect(AudioType.MILESTONE_COMPLETED);
-  }
+  // public playMilestoneCompletedSound(): void {
+  //   this.playEffect(AudioType.MILESTONE_COMPLETED);
+  // }
 
-  public playButtonClickSound(): void {
-    this.playEffect(AudioType.BUTTON_CLICK);
-  }
+  // public playButtonClickSound(): void {
+  //   this.playEffect(AudioType.BUTTON_CLICK);
+  // }
 
-  public playGameOverSound(): void {
-    this.playEffect(AudioType.GAME_OVER);
-  }
+  // public playGameOverSound(): void {
+  //   this.playEffect(AudioType.GAME_OVER);
+  // }
 
-  public playRainbowSpecialSound(): void {
-    this.playEffect(AudioType.RAINBOW_SPECIAL);
-  }
+  // public playRainbowSpecialSound(): void {
+  //   this.playEffect(AudioType.RAINBOW_SPECIAL);
+  // }
 }
