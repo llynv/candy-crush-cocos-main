@@ -1,7 +1,7 @@
 [
   {
     "__type__": "cc.Prefab",
-    "_name": "ConfettiEffect",
+    "_name": "CustomConfetti",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_native": "",
@@ -13,7 +13,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "ConfettiEffect",
+    "_name": "CustomConfetti",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": null,
@@ -25,15 +25,18 @@
       },
       {
         "__id__": 4
+      },
+      {
+        "__id__": 6
       }
     ],
     "_prefab": {
-      "__id__": 6
+      "__id__": 8
     },
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -6.956,
-      "y": 300,
+      "x": 0,
+      "y": 0,
       "z": 0
     },
     "_lrot": {
@@ -73,8 +76,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 200,
-      "height": 200
+      "width": 30,
+      "height": 15
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -85,11 +88,11 @@
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "72a9mNYmVG47fX576CuvZ4"
+    "fileId": "74Ww8qg/9EiJqf7cA5Hjve"
   },
   {
-    "__type__": "cc.ParticleSystem2D",
-    "_name": "ConfettiParticles",
+    "__type__": "b39e7Gz7RlOwqyl4LsJsGi7",
+    "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
     "node": {
@@ -99,9 +102,30 @@
     "__prefab": {
       "__id__": 5
     },
+    "sprite": {
+      "__id__": 6
+    },
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "b8PdNlraZKUZjJ2KsX1t1i"
+  },
+  {
+    "__type__": "cc.Sprite",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 7
+    },
     "_customMaterial": null,
     "_srcBlendFactor": 2,
-    "_dstBlendFactor": 1,
+    "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
       "r": 255,
@@ -109,97 +133,28 @@
       "b": 255,
       "a": 255
     },
-    "duration": 3,
-    "emissionRate": 30,
-    "life": 3,
-    "lifeVar": 1,
-    "angle": 90,
-    "angleVar": 60,
-    "startSize": 8,
-    "startSizeVar": 4,
-    "endSize": 6,
-    "endSizeVar": 2,
-    "startSpin": 0,
-    "startSpinVar": 360,
-    "endSpin": 720,
-    "endSpinVar": 360,
-    "sourcePos": {
-      "__type__": "cc.Vec2",
-      "x": 0,
-      "y": -250
-    },
-    "posVar": {
-      "__type__": "cc.Vec2",
-      "x": 80,
-      "y": 20
-    },
-    "emitterMode": 0,
-    "gravity": {
-      "__type__": "cc.Vec2",
-      "x": 0,
-      "y": 0
-    },
-    "speed": -100,
-    "speedVar": 0,
-    "tangentialAccel": 0,
-    "tangentialAccelVar": 20,
-    "radialAccel": 0,
-    "radialAccelVar": 10,
-    "rotationIsDir": false,
-    "startRadius": 0,
-    "startRadiusVar": 0,
-    "endRadius": 0,
-    "endRadiusVar": 0,
-    "rotatePerS": 0,
-    "rotatePerSVar": 0,
-    "playOnLoad": true,
-    "autoRemoveOnFinish": true,
-    "_preview": true,
-    "preview": true,
-    "_custom": true,
-    "_file": {
-      "__uuid__": "e17b4526-57a2-48d3-acc9-cf09f30aa138",
-      "__expectedType__": "cc.ParticleAsset"
-    },
     "_spriteFrame": {
       "__uuid__": "24a704da-2867-446d-8d1a-5e920c75e09d@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
-    "_totalParticles": 250,
-    "_startColor": {
-      "__type__": "cc.Color",
-      "r": 255,
-      "g": 215,
-      "b": 0,
-      "a": 255
+    "_type": 0,
+    "_fillType": 0,
+    "_sizeMode": 1,
+    "_fillCenter": {
+      "__type__": "cc.Vec2",
+      "x": 0,
+      "y": 0
     },
-    "_startColorVar": {
-      "__type__": "cc.Color",
-      "r": 100,
-      "g": 100,
-      "b": 100,
-      "a": 0
-    },
-    "_endColor": {
-      "__type__": "cc.Color",
-      "r": 255,
-      "g": 215,
-      "b": 0,
-      "a": 0
-    },
-    "_endColorVar": {
-      "__type__": "cc.Color",
-      "r": 50,
-      "g": 50,
-      "b": 50,
-      "a": 0
-    },
-    "_positionType": 0,
+    "_fillStart": 0,
+    "_fillRange": 0,
+    "_isTrimmedMode": true,
+    "_useGrayscale": false,
+    "_atlas": null,
     "_id": ""
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "4dlNA+X4JLrLTJ8HsemTGI"
+    "fileId": "0cbq3RpxJKIa7JIQ+Xthmj"
   },
   {
     "__type__": "cc.PrefabInfo",
@@ -209,7 +164,7 @@
     "asset": {
       "__id__": 0
     },
-    "fileId": "d3ieR24nNCHKjamHaxsjYW",
+    "fileId": "d2qpHFCyxOJbvwBqdnauKw",
     "instance": null,
     "targetOverrides": null
   }

@@ -115,10 +115,10 @@
     "lifeVar": 0.2,
     "angle": 360,
     "angleVar": 360,
-    "startSize": 12,
-    "startSizeVar": 8,
-    "endSize": 8,
-    "endSizeVar": 6,
+    "startSize": 20,
+    "startSizeVar": 18,
+    "endSize": 16,
+    "endSizeVar": 12,
     "startSpin": -47.369998931884766,
     "startSpinVar": 0,
     "endSpin": -47.369998931884766,
@@ -165,7 +165,7 @@
       "__uuid__": "f12a23c4-b924-4322-a260-3d982428f1e8@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
-    "_totalParticles": 12,
+    "_totalParticles": 18,
     "_startColor": {
       "__type__": "cc.Color",
       "r": 255,

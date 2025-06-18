@@ -65,20 +65,13 @@ export class SpecialTileManager extends Component {
     tile: Tile,
     swapTile: Tile,
     coords: { x: number; y: number },
-    isPlayerSwap: boolean = false
+    isPlayerSwap: boolean = false,
+    isRainbowClick: boolean = false
   ): Tile[] {
     if (!tile || !tile.node || !tile.node.isValid) return [];
 
     const specialType = tile.getSpecialType();
     const tileGrid = this.boardManager!.getTileGrid();
-    console.log(
-      'Activating special tile:',
-      specialType,
-      'at coords:',
-      coords,
-      'isPlayerSwap:',
-      isPlayerSwap
-    );
 
     if (!coords) return [];
 
@@ -87,19 +80,7 @@ export class SpecialTileManager extends Component {
         return this.activateBombTile(coords.x, coords.y, tileGrid, tile);
 
       case SpecialTileType.RAINBOW:
-        if (isPlayerSwap) {
-          return this.activateRainbowTile(tile, swapTile, tileGrid);
-        }
-        return [];
-
-      case SpecialTileType.STRIPED_HORIZONTAL:
-        return this.activateStripedTile(coords.x, coords.y, tileGrid, 'horizontal');
-
-      case SpecialTileType.STRIPED_VERTICAL:
-        return this.activateStripedTile(coords.x, coords.y, tileGrid, 'vertical');
-
-      case SpecialTileType.WRAPPED:
-        return this.activateWrappedTile(coords.x, coords.y, tileGrid, tile);
+        return this.activateRainbowTile(tile, swapTile, tileGrid, isPlayerSwap, isRainbowClick);
 
       default:
         return [];
@@ -122,120 +103,157 @@ export class SpecialTileManager extends Component {
 
         if (x >= 0 && x < GameConfig.GridWidth && y >= 0 && y < GameConfig.GridHeight) {
           const tile = tileGrid[y][x];
-          if (tile && tile.node && tile.node.isValid) {
+          if (tile && tile.node && tile.node.isValid && !tile.isRainbowTile()) {
             affectedTiles.push(tile);
           }
         }
       }
     }
-    return affectedTiles;
-  }
-
-  private activateStripedTile(
-    centerX: number,
-    centerY: number,
-    tileGrid: (Tile | undefined)[][],
-    direction: 'horizontal' | 'vertical'
-  ): Tile[] {
-    const affectedTiles: Tile[] = [];
-
-    if (direction === 'horizontal') {
-      for (let x = 0; x < GameConfig.GridWidth; x++) {
-        const tile = tileGrid[centerY][x];
-        if (tile && tile.node && tile.node.isValid) {
-          affectedTiles.push(tile);
-        }
-      }
-    } else {
-      for (let y = 0; y < GameConfig.GridHeight; y++) {
-        const tile = tileGrid[y][centerX];
-        if (tile && tile.node && tile.node.isValid) {
-          affectedTiles.push(tile);
-        }
-      }
-    }
-
-    return affectedTiles;
-  }
-
-  private activateWrappedTile(
-    centerX: number,
-    centerY: number,
-    tileGrid: (Tile | undefined)[][],
-    wrappedTile: Tile
-  ): Tile[] {
-    const affectedTiles: Tile[] = [];
-    const radius = SpecialTileConfig.WRAPPED.effectRadius || 2;
-
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        const x = centerX + dx;
-        const y = centerY + dy;
-
-        if (x >= 0 && x < GameConfig.GridWidth && y >= 0 && y < GameConfig.GridHeight) {
-          const tile = tileGrid[y][x];
-          if (tile && tile.node && tile.node.isValid) {
-            affectedTiles.push(tile);
-          }
-        }
-      }
-    }
-
-    setTimeout(async () => {
-      const secondWaveAffected: Tile[] = [];
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          const x = centerX + dx;
-          const y = centerY + dy;
-
-          if (x >= 0 && x < GameConfig.GridWidth && y >= 0 && y < GameConfig.GridHeight) {
-            const tile = tileGrid[y][x];
-            if (tile && tile.node && tile.node.isValid) {
-              secondWaveAffected.push(tile);
-            }
-          }
-        }
-      }
-
-      if (this.particleEffectManager && wrappedTile.node && wrappedTile.node.parent) {
-        const positions = secondWaveAffected.map(tile => tile.node.worldPosition);
-        await this.particleEffectManager?.playMultipleEffects(
-          positions,
-          'explosion',
-          wrappedTile.node.parent
-        );
-      }
-    }, 300);
-
     return affectedTiles;
   }
 
   private activateRainbowTile(
     rainbowTile: Tile,
     targetTile: Tile,
-    tileGrid: (Tile | undefined)[][]
+    tileGrid: (Tile | undefined)[][],
+    isPlayerSwap: boolean = false,
+    isRainbowClick: boolean = false
   ): Tile[] {
     const affectedTiles: Tile[] = [];
 
+    if (isRainbowClick) {
+      return this.activateRainbowClick(rainbowTile, targetTile, tileGrid);
+    }
+
+    if (!isPlayerSwap) return [];
+
     if (targetTile.isRainbowTile()) {
-      tileGrid.forEach(row => {
-        row.forEach(tile => {
+      for (const row of tileGrid) {
+        for (const tile of row) {
           if (tile && tile.node && tile.node.isValid) {
             affectedTiles.push(tile);
           }
-        });
-      });
+        }
+      }
       return affectedTiles;
     }
 
     for (let y = 0; y < GameConfig.GridHeight; y++) {
       for (let x = 0; x < GameConfig.GridWidth; x++) {
         const tile = tileGrid[y][x];
-        if (!tile || !targetTile || tile.getTileType() !== targetTile.getTileType()) continue;
+        if (
+          !tile ||
+          !targetTile ||
+          tile.getTileType() !== targetTile.getTileType() ||
+          tile.isRainbowTile()
+        )
+          continue;
         affectedTiles.push(tile);
       }
     }
 
     return affectedTiles;
+  }
+
+  private activateRainbowClick(
+    rainbowTile: Tile,
+    targetTile: Tile,
+    tileGrid: (Tile | undefined)[][]
+  ): Tile[] {
+    const affectedTiles: Tile[] = [];
+
+    const visitedTiles = new Set<Tile>();
+    const tileCoords = this.boardManager!.getTileCoords();
+    const rainbowCoords = tileCoords.get(rainbowTile);
+
+    if (!rainbowCoords) return affectedTiles;
+
+    const centerX = rainbowCoords.x;
+    const centerY = rainbowCoords.y;
+
+    const directions = [
+      { x: 1, y: 0 },
+      { x: 0, y: 1 },
+      { x: -1, y: 0 },
+      { x: 0, y: -1 },
+    ];
+
+    const maxEdges = 5;
+
+    const result = this.spiralTraversal(
+      centerX,
+      centerY,
+      visitedTiles,
+      affectedTiles,
+      maxEdges,
+      tileGrid,
+      directions
+    );
+
+    affectedTiles.length = 0;
+    affectedTiles.push(...result);
+
+    return affectedTiles;
+  }
+
+  private spiralTraversal(
+    startX: number,
+    startY: number,
+    visitedSet: Set<Tile>,
+    affectedList: Tile[],
+    maxEdges: number,
+    tileGrid: (Tile | undefined)[][],
+    directions: { x: number; y: number }[]
+  ): Tile[] {
+    let result = [...affectedList];
+    let visited = new Set(visitedSet);
+
+    const traverse = (
+      x: number,
+      y: number,
+      dir: number,
+      dirSteps: number,
+      steps: number,
+      turns: number,
+      total: number
+    ): void => {
+      if (total >= maxEdges * maxEdges) return;
+
+      if (this.isInBounds(x, y, tileGrid)) {
+        const tile = tileGrid[y][x];
+        if (tile && tile.node && tile.node.isValid && !visited.has(tile)) {
+          result.push(tile);
+          visited.add(tile);
+        }
+      }
+
+      const nextX = x + directions[dir].x;
+      const nextY = y + directions[dir].y;
+      const nextSteps = steps + 1;
+      const nextTotal = total + 1;
+
+      if (nextSteps === dirSteps) {
+        const nextDir = (dir + 1) % 4;
+        const nextTurns = turns + 1;
+        const nextDirSteps = nextTurns % 2 === 0 ? dirSteps + 1 : dirSteps;
+
+        traverse(nextX, nextY, nextDir, nextDirSteps, 0, nextTurns, nextTotal);
+      } else {
+        traverse(nextX, nextY, dir, dirSteps, nextSteps, turns, nextTotal);
+      }
+    };
+
+    traverse(startX, startY, 0, 1, 0, 0, 0);
+    return result;
+  }
+
+  private isInBounds(x: number, y: number, tileGrid: (Tile | undefined)[][]): boolean {
+    return (
+      x >= 0 &&
+      x < GameConfig.GridWidth &&
+      y >= 0 &&
+      y < GameConfig.GridHeight &&
+      tileGrid[y][x] !== undefined
+    );
   }
 }

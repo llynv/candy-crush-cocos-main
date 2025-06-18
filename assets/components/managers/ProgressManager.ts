@@ -24,7 +24,11 @@ export class ProgressManager extends Singleton {
 
   protected onLoad(): void {}
 
-  protected onDestroy(): void {}
+  protected onDestroy(): void {
+    this.eventTarget.targetOff(this);
+
+    this.pendingMilestoneData = [];
+  }
 
   /**
    * Add pending score data that will be processed later after all cascades complete
@@ -60,13 +64,6 @@ export class ProgressManager extends Singleton {
 
     const milestoneCompleted = this.checkMilestoneCompletion();
 
-    console.log(
-      'Processed pending scores, total points:',
-      totalPoints,
-      'currentScore:',
-      this.currentScore
-    );
-
     this.eventTarget.emit('progress-updated', this.getMilestoneData());
 
     return milestoneCompleted;
@@ -88,8 +85,6 @@ export class ProgressManager extends Singleton {
     this.currentScore += points;
 
     const milestoneCompleted = this.checkMilestoneCompletion();
-
-    console.log('currentScore', this.currentScore);
 
     this.eventTarget.emit('progress-updated', this.getMilestoneData());
 
@@ -157,6 +152,20 @@ export class ProgressManager extends Singleton {
    */
   public onMilestoneCompleted(callback: (data: MilestoneData) => void): void {
     this.eventTarget.on('milestone-completed', callback);
+  }
+
+  /**
+   * Unsubscribe from progress events
+   */
+  public offProgressUpdate(callback: (data: MilestoneData) => void): void {
+    this.eventTarget.off('progress-updated', callback);
+  }
+
+  /**
+   * Unsubscribe from milestone completion events
+   */
+  public offMilestoneCompleted(callback: (data: MilestoneData) => void): void {
+    this.eventTarget.off('milestone-completed', callback);
   }
 
   /**

@@ -8,7 +8,9 @@ import {
   tween,
   Color,
   SpriteFrame,
+  UITransform,
 } from 'cc';
+import { GameConfig } from '../constants/GameConfig';
 
 const { ccclass, property } = _decorator;
 
@@ -50,6 +52,10 @@ export class Frame extends Component {
       return;
 
     this.sprite.spriteFrame = this.spriteFrames[spriteIndex];
+    const uiTransform = this.sprite.node.getComponent(UITransform);
+    if (uiTransform) {
+      uiTransform.setContentSize(GameConfig.FrameSize, GameConfig.FrameSize);
+    }
   }
 
   public triggerMouseEnter(): void {

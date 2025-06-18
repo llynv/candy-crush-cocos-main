@@ -13,7 +13,9 @@ import {
   EventHandler,
   Toggle,
   AudioSource,
+  Tween,
 } from 'cc';
+import { AudioManager } from '../managers/AudioManager';
 
 const { ccclass, property } = _decorator;
 
@@ -37,6 +39,9 @@ export class PausePopup extends Component {
   @property(Label)
   private titleLabel: Label | null = null;
 
+  @property(AudioManager)
+  private audioManager: AudioManager | null = null;
+
   private isVisible = false;
   private onContinueCallback: (() => void) | null = null;
   private onNewGameCallback: (() => void) | null = null;
@@ -56,7 +61,11 @@ export class PausePopup extends Component {
       clickHandler.target = this.node;
       clickHandler.component = 'PausePopup';
       clickHandler.handler = 'onContinueClicked';
-      this.continueButton.clickEvents.push(clickHandler);
+      // this.continueButton.clickEvents.push(clickHandler);
+
+      this.continueButton.node.on(Node.EventType.TOUCH_END, () => {
+        this.onContinueClicked();
+      });
     }
 
     if (this.newGameButton) {
@@ -66,7 +75,11 @@ export class PausePopup extends Component {
       clickHandler.target = this.node;
       clickHandler.component = 'PausePopup';
       clickHandler.handler = 'onNewGameClicked';
-      this.newGameButton.clickEvents.push(clickHandler);
+      // this.newGameButton.clickEvents.push(clickHandler);
+
+      this.newGameButton.node.on(Node.EventType.TOUCH_END, () => {
+        this.onNewGameClicked();
+      });
     }
 
     if (this.soundToggle) {
@@ -176,13 +189,15 @@ export class PausePopup extends Component {
     }
 
     if (this.popupPanel) {
+      Tween.stopAllByTarget(this.popupPanel);
+
       const panelOpacity = this.popupPanel.getComponent(UIOpacity)!;
 
-      tween(panelOpacity).to(0.2, { opacity: 255 }, { easing: 'quadOut' }).start();
-
       tween(this.popupPanel)
-        .to(0.4, { scale: new Vec3(1.2, 1.2, 1) }, { easing: 'backOut' })
-        .to(0.2, { scale: new Vec3(1, 1, 1) }, { easing: 'quadOut' })
+        .parallel(
+          tween(this.popupPanel).to(0.6, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' }),
+          tween(panelOpacity).to(0.3, { opacity: 255 }, { easing: 'quadOut' })
+        )
         .start();
     }
   }
@@ -243,27 +258,23 @@ export class PausePopup extends Component {
   public onContinueClicked(): void {
     this.hide();
     if (this.onContinueCallback) {
-      setTimeout(() => this.onContinueCallback!(), 300);
+      setTimeout(() => this.onContinueCallback!(), 100);
     }
   }
 
   public onNewGameClicked(): void {
     this.hide();
     if (this.onNewGameCallback) {
-      setTimeout(() => this.onNewGameCallback!(), 300);
+      setTimeout(() => this.onNewGameCallback!(), 100);
     }
   }
 
   public onSoundToggled(): void {
     if (this.soundToggle) {
       const soundEnabled = this.soundToggle.isChecked;
+      this.audioManager!.setMute(!soundEnabled);
 
-      const audioSources = this.node.getComponentsInChildren(AudioSource);
-      audioSources.forEach(audio => {
-        audio.volume = soundEnabled ? 1.0 : 0.0;
-      });
-
-      console.log('Sound toggled:', soundEnabled ? 'ON' : 'OFF');
+      console.log(`Sound toggled: ${soundEnabled ? 'enabled' : 'disabled'}`);
     }
   }
 
@@ -271,7 +282,10 @@ export class PausePopup extends Component {
    * Get current sound state
    */
   public isSoundEnabled(): boolean {
-    return this.soundToggle ? this.soundToggle.isChecked : true;
+    if (this.soundToggle) {
+      return this.soundToggle.isChecked;
+    }
+    return !this.audioManager!.isMusicMuted();
   }
 
   /**
@@ -280,9 +294,34 @@ export class PausePopup extends Component {
   public setSoundEnabled(enabled: boolean): void {
     if (this.soundToggle) {
       this.soundToggle.isChecked = enabled;
-      this.onSoundToggled();
+      this.audioManager!.setMute(!enabled);
     }
   }
 
-  protected onDestroy(): void {}
+  protected onDestroy(): void {
+    if (this.continueButton?.node) {
+      this.continueButton.node.off(Node.EventType.TOUCH_END);
+    }
+    if (this.newGameButton?.node) {
+      this.newGameButton.node.off(Node.EventType.TOUCH_END);
+    }
+
+    if (this.popupPanel) {
+      tween(this.popupPanel).stop();
+      const sprite = this.popupPanel.getComponent(Sprite);
+      if (sprite) {
+        tween(sprite).stop();
+      }
+    }
+
+    if (this.backgroundOverlay) {
+      const bgOpacity = this.backgroundOverlay.getComponent(UIOpacity);
+      if (bgOpacity) {
+        tween(bgOpacity).stop();
+      }
+    }
+
+    this.onContinueCallback = null;
+    this.onNewGameCallback = null;
+  }
 }

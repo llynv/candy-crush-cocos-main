@@ -12,6 +12,7 @@ import {
   UITransform,
 } from 'cc';
 import { ProgressManager, MilestoneData } from './managers/ProgressManager';
+import { GameConfig } from '../constants/GameConfig';
 
 const { ccclass, property } = _decorator;
 
@@ -28,6 +29,9 @@ export class ProgressUI extends Component {
 
   @property(Label)
   private progressLabel: Label | null = null;
+
+  @property(Label)
+  private movesLabel: Label | null = null;
 
   @property(Node)
   private celebrationNode: Node | null = null;
@@ -50,6 +54,7 @@ export class ProgressUI extends Component {
     this.progressManager.onMilestoneCompleted(this.onMilestoneCompleted.bind(this));
 
     this.updateProgressDisplay(this.progressManager.getMilestoneData());
+    this.updateMovesDisplay(GameConfig.Moves);
   }
 
   private enhanceUIElements(): void {
@@ -58,6 +63,23 @@ export class ProgressUI extends Component {
     this.enhanceProgressLabel();
     this.enhanceProgressBar();
     this.addUIBackgrounds();
+    this.enhanceMovesLabel();
+  }
+
+  private enhanceMovesLabel(): void {
+    if (!this.movesLabel) return;
+
+    this.movesLabel.color = new Color(255, 255, 255, 255);
+    this.movesLabel.fontSize = 22;
+    this.movesLabel.isBold = true;
+    this.movesLabel.enableOutline = true;
+    this.movesLabel.outlineColor = new Color(0, 0, 139, 255);
+    this.movesLabel.outlineWidth = 2;
+
+    this.movesLabel.enableShadow = true;
+    this.movesLabel.shadowColor = new Color(0, 0, 0, 100);
+    this.movesLabel.shadowOffset = new Vec2(1, -1);
+    this.movesLabel.shadowBlur = 3;
   }
 
   private enhanceScoreLabel(): void {
@@ -125,19 +147,21 @@ export class ProgressUI extends Component {
   private updateProgressBarColor(progress: number): void {
     if (!this.progressBar?.barSprite) return;
 
-    let color: Color;
-
-    if (progress < 0.3) {
-      color = new Color(255, Math.floor(165 * (progress / 0.3)), 0, 255);
-    } else if (progress < 0.7) {
-      const t = (progress - 0.3) / 0.4;
-      color = new Color(255, Math.floor(165 + 90 * t), 0, 255);
-    } else {
-      const t = (progress - 0.7) / 0.3;
-      color = new Color(Math.floor(255 - 255 * t), 255, Math.floor(100 * t), 255);
-    }
+    const color = this.getProgressBarColor(progress);
 
     this.progressBar.barSprite.color = color;
+  }
+
+  private getProgressBarColor(progress: number): Color {
+    if (progress < 0.3) {
+      return new Color(255, Math.floor(165 * (progress / 0.3)), 0, 255);
+    } else if (progress < 0.7) {
+      const t = (progress - 0.3) / 0.4;
+      return new Color(255, Math.floor(165 + 90 * t), 0, 255);
+    } else {
+      const t = (progress - 0.7) / 0.3;
+      return new Color(Math.floor(255 - 255 * t), 255, Math.floor(100 * t), 255);
+    }
   }
 
   private addUIBackgrounds(): void {
@@ -326,7 +350,7 @@ export class ProgressUI extends Component {
     const colorTween = tween(this.scoreLabel)
       .repeat(
         4,
-        tween()
+        tween(this.scoreLabel)
           .call(() => {
             this.scoreLabel!.color = colors[colorIndex];
             colorIndex = (colorIndex + 1) % colors.length;
@@ -366,7 +390,7 @@ export class ProgressUI extends Component {
     tween(this.progressBar.barSprite)
       .repeat(
         rainbowColors.length,
-        tween()
+        tween(this.progressBar.barSprite)
           .call(() => {
             this.progressBar!.barSprite!.color = rainbowColors[colorIndex];
             colorIndex++;
@@ -386,7 +410,39 @@ export class ProgressUI extends Component {
   }
 
   protected onDestroy(): void {
+    // Clean up ProgressManager callbacks
+    if (this.progressManager) {
+      this.progressManager.offProgressUpdate(this.updateProgressDisplay.bind(this));
+      this.progressManager.offMilestoneCompleted(this.onMilestoneCompleted.bind(this));
+    }
+
+    // Stop all tweens on UI elements
+    if (this.progressBar?.node) {
+      tween(this.progressBar.node).stop();
+    }
+    if (this.progressBar?.barSprite) {
+      tween(this.progressBar.barSprite).stop();
+    }
+    if (this.scoreLabel?.node) {
+      tween(this.scoreLabel.node).stop();
+      tween(this.scoreLabel).stop();
+    }
+    if (this.milestoneLabel?.node) {
+      tween(this.milestoneLabel.node).stop();
+    }
+    if (this.progressLabel?.node) {
+      tween(this.progressLabel.node).stop();
+    }
+    if (this.movesLabel?.node) {
+      tween(this.movesLabel.node).stop();
+      tween(this.movesLabel).stop();
+    }
+    if (this.celebrationNode) {
+      tween(this.celebrationNode).stop();
+    }
+
     if (this.scoreBackground && this.scoreBackground.isValid) {
+      tween(this.scoreBackground).stop();
       this.scoreBackground.destroy();
     }
     if (this.progressBackground && this.progressBackground.isValid) {
@@ -394,6 +450,65 @@ export class ProgressUI extends Component {
     }
     if (this.milestoneBackground && this.milestoneBackground.isValid) {
       this.milestoneBackground.destroy();
+    }
+  }
+
+  public updateMovesDisplay(movesRemaining: number): void {
+    if (!this.movesLabel) return;
+
+    const newText = `Moves: ${movesRemaining}`;
+
+    if (this.movesLabel.string !== newText) {
+      this.animateMovesChange(movesRemaining, newText);
+    }
+  }
+
+  private getMovesLabelColor(movesRemaining: number): Color {
+    if (movesRemaining <= 5) {
+      return new Color(255, 69, 0, 255);
+    } else if (movesRemaining <= 10) {
+      return new Color(255, 165, 0, 255);
+    } else {
+      return new Color(255, 255, 255, 255);
+    }
+  }
+
+  private animateMovesChange(movesRemaining: number, newText: string): void {
+    if (!this.movesLabel) return;
+
+    const textColor = this.getMovesLabelColor(movesRemaining);
+
+    tween(this.movesLabel)
+      .to(0.1, { color: new Color(255, 255, 255, 255) })
+      .to(0.2, { color: textColor })
+      .start();
+
+    tween(this.movesLabel.node)
+      .to(0.1, { scale: new Vec3(1.2, 1.2, 1) })
+      .call(() => {
+        this.movesLabel!.string = newText;
+      })
+      .to(0.2, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' })
+      .start();
+
+    // Extra animation for game over or low moves warning
+    if (movesRemaining <= 0) {
+      // Game over animation - more dramatic
+      tween(this.movesLabel.node)
+        .delay(0.3)
+        .to(0.15, { scale: new Vec3(1.3, 1.3, 1) })
+        .to(0.15, { scale: new Vec3(0.9, 0.9, 1) })
+        .to(0.15, { scale: new Vec3(1.3, 1.3, 1) })
+        .to(0.15, { scale: new Vec3(1, 1, 1) })
+        .start();
+    } else if (movesRemaining <= 5) {
+      tween(this.movesLabel.node)
+        .delay(0.3)
+        .to(0.1, { scale: new Vec3(1.1, 1.1, 1) })
+        .to(0.1, { scale: new Vec3(1, 1, 1) })
+        .to(0.1, { scale: new Vec3(1.1, 1.1, 1) })
+        .to(0.1, { scale: new Vec3(1, 1, 1) })
+        .start();
     }
   }
 }

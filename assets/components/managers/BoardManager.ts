@@ -1,8 +1,9 @@
-import { _decorator, Component, instantiate, Prefab, type Node } from 'cc';
+import { _decorator, Button, Component, instantiate, Prefab, type Node } from 'cc';
 const { ccclass, property } = _decorator;
 import { GameConfig } from '../../constants/GameConfig';
 import { Tile } from '../Tile';
 import { Frame } from '../Frame';
+import { GameGlobalData } from '../GameGlobalData';
 
 export interface GridPosition {
   x: number;
@@ -234,6 +235,10 @@ export class BoardManager extends Component {
       const tile = this.getVirtualTileAt(x, y);
       if (tile) {
         tile.node.active = true;
+        const buttonNode = tile.node.getComponent(Button);
+        if (buttonNode) {
+          buttonNode.interactable = !GameGlobalData.getInstance().getIsGamePaused();
+        }
 
         const fallStartY = -(collected + 1);
         const worldPos = this.getWorldPosition({ x, y: fallStartY });

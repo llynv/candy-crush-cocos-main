@@ -119,12 +119,12 @@
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "d6f3d256-8525-4134-a305-0a99a92c37ee@f9941",
+      "__uuid__": "cbb9cd49-0d0c-403b-8f87-8c31bff76132@93e66",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,
     "_fillType": 0,
-    "_sizeMode": 1,
+    "_sizeMode": 0,
     "_fillCenter": {
       "__type__": "cc.Vec2",
       "x": 0,
@@ -134,7 +134,10 @@
     "_fillRange": 0,
     "_isTrimmedMode": true,
     "_useGrayscale": false,
-    "_atlas": null,
+    "_atlas": {
+      "__uuid__": "cbb9cd49-0d0c-403b-8f87-8c31bff76132",
+      "__expectedType__": "cc.SpriteAtlas"
+    },
     "_id": ""
   },
   {
@@ -248,6 +251,7 @@
     "__prefab": {
       "__id__": 12
     },
+    "rotationContainer": null,
     "_id": ""
   },
   {

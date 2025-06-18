@@ -13,8 +13,6 @@ export class MatchManager extends Component {
 
     this.findShapeMatches(tileGrid, matches, processedTiles);
 
-    console.log('matches', matches);
-
     return matches;
   }
 
@@ -50,7 +48,9 @@ export class MatchManager extends Component {
           const match = this.findPatternMatch(tileGrid, x, y, pattern, processedTiles);
           if (match) {
             matches.push(match);
-            match.forEach(tile => processedTiles.add(tile));
+            for (const tile of match) {
+              processedTiles.add(tile);
+            }
           }
         }
       }
