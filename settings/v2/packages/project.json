@@ -2,10 +2,11 @@
   "__version__": "1.0.6",
   "general": {
     "designResolution": {
-      "width": 768,
-      "height": 1366,
+      "width": 1920,
+      "height": 1080,
       "fitHeight": false,
       "fitWidth": true
     }
-  }
+  },
+  "custom_joint_texture_layouts": []
 }

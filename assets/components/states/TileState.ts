@@ -10,9 +10,6 @@ export abstract class TileState {
 
   abstract onEnter(): void;
   abstract onExit(): void;
-  abstract onClick(): void;
-  abstract onSelect(): void;
-  abstract onDeselect(): void;
-  abstract onMouseDown(): void;
-  abstract onMouseUp(): void;
+  abstract onUpdate(): void;
+  abstract onPlayerIdle(): void;
 }

@@ -57,8 +57,11 @@
   "packages": {
     "web-mobile": {
       "useWebGPU": false,
-      "orientation": "auto",
+      "orientation": "portrait",
       "embedWebDebugger": false,
+      "fullscreen": true,
+      "resolution": "auto",
+      "adaptScreenSize": true,
       "__version__": "1.0.1"
     },
     "adsense-h5g-plugin": {

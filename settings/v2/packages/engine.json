@@ -219,5 +219,6 @@
       }
     },
     "globalConfigKey": "defaultConfig"
-  }
+  },
+  "macroCustom": []
 }

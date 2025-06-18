@@ -1,14 +1,14 @@
 import { Color } from 'cc';
 import { TileState } from './TileState';
 import { Tile } from '../Tile';
-import { TileAnimationHandler } from '../animation-handler/TileAnimationHandler';
+import { AnimationManager } from '../managers/AnimationManager';
 
 export class IdleState extends TileState {
-  private animationHandler: TileAnimationHandler | null = null;
+  private animationHandler: AnimationManager | null = null;
 
   constructor(tile: Tile) {
     super(tile);
-    this.animationHandler = tile.getComponent(TileAnimationHandler);
+    this.animationHandler = tile.getComponent(AnimationManager);
   }
 
   onEnter(): void {
@@ -18,17 +18,9 @@ export class IdleState extends TileState {
 
   onExit(): void {}
 
-  onClick(): void {
-    this.tile.changeState('select');
-  }
+  onUpdate(): void {}
 
-  onSelect(): void {}
-  onDeselect(): void {}
-  onMouseDown(): void {
-    this.tile.changeState('select');
-  }
-
-  onMouseUp(): void {
-    this.tile.changeState('select');
+  onPlayerIdle(): void {
+    this.animationHandler?.animatePlayerIdle();
   }
 }
