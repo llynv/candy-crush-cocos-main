@@ -11,21 +11,9 @@ import {
   UITransform,
   Sprite,
 } from 'cc';
-import { ConfettiParticle } from './ConfettiParticle';
+import { ConfettiParticle, ConfettiConfig } from './ConfettiParticle';
 
 const { ccclass, property } = _decorator;
-
-interface ConfettiConfig {
-  initialVelocityMin: Vec3;
-  initialVelocityMax: Vec3;
-  gravity: number;
-  airDensity: number;
-  rotationSpeed: number;
-  lifetime: number;
-  colors: Color[];
-  shapes: string[];
-  massRange: { min: number; max: number };
-}
 
 interface ConfettiSystemConfig {
   particleCount: number;
@@ -41,23 +29,6 @@ export class ConfettiSystem extends Component {
   private confettiParticlePrefab: Prefab | null = null;
 
   private activeParticles: ConfettiParticle[] = [];
-  private particlePool: Node[] = [];
-  private maxPoolSize: number = 200;
-
-  protected onLoad(): void {
-    this.initializePool();
-  }
-
-  /**
-   * Initialize the particle pool
-   */
-  private initializePool(): void {
-    for (let i = 0; i < this.maxPoolSize; i++) {
-      const particle = this.createParticleNode();
-      particle.active = false;
-      this.particlePool.push(particle);
-    }
-  }
 
   /**
    * Create a new particle node
@@ -69,28 +40,6 @@ export class ConfettiSystem extends Component {
   }
 
   /**
-   * Get a particle from the pool or create a new one
-   */
-  private getParticleFromPool(): Node {
-    if (this.particlePool.length > 0) {
-      return this.particlePool.pop()!;
-    }
-    return this.createParticleNode();
-  }
-
-  /**
-   * Return a particle to the pool
-   */
-  private returnParticleToPool(particle: Node): void {
-    if (this.particlePool.length < this.maxPoolSize) {
-      particle.active = false;
-      this.particlePool.push(particle);
-    } else {
-      particle.destroy();
-    }
-  }
-
-  /**
    * Spawn a single confetti particle at a position
    */
   public spawnConfettiParticle(
@@ -98,6 +47,7 @@ export class ConfettiSystem extends Component {
     config: Partial<ConfettiConfig> = {}
   ): ConfettiParticle {
     const particleNode = this.createParticleNode();
+    particleNode.active = true;
     const confettiParticle = particleNode.getComponent(ConfettiParticle);
 
     if (!confettiParticle) {
@@ -109,7 +59,6 @@ export class ConfettiSystem extends Component {
 
     confettiParticle.setDestroyCallback(() => {
       this.removeActiveParticle(confettiParticle);
-      this.returnParticleToPool(particleNode);
     });
 
     confettiParticle.launch(config);
@@ -123,9 +72,9 @@ export class ConfettiSystem extends Component {
    */
   public createConfettiBurst(position: Vec3, config: Partial<ConfettiSystemConfig> = {}): void {
     const defaultConfig: ConfettiSystemConfig = {
-      particleCount: 30,
-      spawnRadius: 50,
-      burstDuration: 1,
+      particleCount: 35,
+      spawnRadius: 100,
+      burstDuration: 0,
       colors: [
         new Color(255, 215, 0),
         new Color(255, 20, 147),
@@ -134,20 +83,22 @@ export class ConfettiSystem extends Component {
         new Color(255, 165, 0),
         new Color(138, 43, 226),
       ],
-      intensity: 'medium',
+      intensity: 'heavy',
     };
 
     const finalConfig = { ...defaultConfig, ...config };
 
     const particleCount = this.getParticleCount(finalConfig);
-    const spawnInterval = 0.001;
+
+    const burstInterval = finalConfig.burstDuration / particleCount;
 
     for (let i = 0; i < particleCount; i++) {
       this.scheduleOnce(() => {
-        const spawnPos = this.getRandomSpawnPosition(position, finalConfig.spawnRadius);
+        const tightRadius = finalConfig.spawnRadius * 0.3;
+        const spawnPos = this.getRandomSpawnPosition(position, tightRadius);
         const particleConfig = this.getParticleConfig(finalConfig);
         this.spawnConfettiParticle(spawnPos, particleConfig);
-      }, i * spawnInterval);
+      }, i * burstInterval);
     }
   }
 
@@ -175,14 +126,14 @@ export class ConfettiSystem extends Component {
       new Vec3(screenBounds.right - 200, screenBounds.top - 200, 0),
     ];
 
-    burstPositions.forEach((position, index) => {
+    for (const [index, position] of burstPositions.entries()) {
       this.scheduleOnce(() => {
         this.createConfettiBurst(position, {
           particleCount: 40,
           intensity: 'medium',
         });
-      }, index * 0.3);
-    });
+      }, index * 0.1);
+    }
   }
 
   /**
@@ -192,16 +143,20 @@ export class ConfettiSystem extends Component {
     const velocityMultiplier =
       systemConfig.intensity === 'heavy' ? 1.2 : systemConfig.intensity === 'light' ? 0.8 : 1.0;
 
+    const baseUpwardVelocity = 200 * velocityMultiplier;
+    const maxUpwardVelocity = 500 * velocityMultiplier;
+    const maxOutwardVelocity = 300 * velocityMultiplier;
+
     return {
-      initialVelocityMin: new Vec3(-250 * velocityMultiplier, 400 * velocityMultiplier, 0),
-      initialVelocityMax: new Vec3(250 * velocityMultiplier, 900 * velocityMultiplier, 0),
+      initialVelocityMin: new Vec3(-maxOutwardVelocity, baseUpwardVelocity, 0),
+      initialVelocityMax: new Vec3(maxOutwardVelocity, maxUpwardVelocity, 0),
       colors: systemConfig.colors,
-      lifetime: systemConfig.intensity === 'heavy' ? 6.0 : 5.0,
-      gravity: 981, // Use the realistic physics gravity
-      airDensity: 1.225, // Standard air density
-      shapes: ['square', 'circle', 'triangle'],
-      massRange: { min: 0.0005, max: 0.002 },
-      rotationSpeed: 360,
+      lifetime: systemConfig.intensity === 'heavy' ? 7.0 : 6.0,
+      gravity: 600,
+      airDensity: 1.5,
+      shapes: ['square', 'rectangle'],
+      massRange: { min: 0.0005, max: 0.0015 },
+      rotationSpeed: 540,
     };
   }
 
@@ -264,11 +219,11 @@ export class ConfettiSystem extends Component {
    * Clear all active particles
    */
   public clearAllParticles(): void {
-    this.activeParticles.forEach(particle => {
+    for (const particle of this.activeParticles) {
       if (particle && particle.getIsActive()) {
         particle.destroyParticle();
       }
-    });
+    }
     this.activeParticles = [];
   }
 
@@ -281,12 +236,5 @@ export class ConfettiSystem extends Component {
 
   protected onDestroy(): void {
     this.clearAllParticles();
-
-    this.particlePool.forEach(particle => {
-      if (particle && particle.isValid) {
-        particle.destroy();
-      }
-    });
-    this.particlePool = [];
   }
 }

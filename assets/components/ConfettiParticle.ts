@@ -15,7 +15,9 @@ import {
 
 const { ccclass, property } = _decorator;
 
-interface ConfettiConfig {
+export type Shape = 'rectangle' | 'square';
+
+export interface ConfettiConfig {
   initialVelocityMin: Vec3;
   initialVelocityMax: Vec3;
   gravity: number;
@@ -23,7 +25,7 @@ interface ConfettiConfig {
   rotationSpeed: number;
   lifetime: number;
   colors: Color[];
-  shapes: string[];
+  shapes: Shape[];
   massRange: { min: number; max: number };
 }
 
@@ -41,17 +43,21 @@ export class ConfettiParticle extends Component {
   private crossSectionalArea: number = 0.0001; // m² (converted from pixel area)
   private terminalVelocity: number = 0;
 
+  public setVelocity(velocity: Vec3): void {
+    this.velocity = velocity;
+  }
+
   private lifetime: number = 0;
   private maxLifetime: number = 5.0;
   private startTime: number = 0;
 
   // Physics constants for pixel-based calculations
-  private readonly PIXELS_PER_METER: number = 100; // 130 pixels = 1 meter
+  private readonly PIXELS_PER_METER: number = 200; // 130 pixels = 1 meter
   private readonly GRAVITY_PIXELS: number = 981; // 9.81 m/s² * 130 pixels/m
 
   private initialScale: Vec3 = new Vec3(1, 1, 1);
   private fadeStartTime: number = 0.7;
-  private currentShape: string = 'rectangle';
+  private currentShape: Shape = 'rectangle';
 
   private isActive: boolean = false;
   private destroyCallback: (() => void) | null = null;
@@ -80,8 +86,8 @@ export class ConfettiParticle extends Component {
    */
   private setupParticle(config: Partial<ConfettiConfig>): void {
     const defaultConfig: ConfettiConfig = {
-      initialVelocityMin: new Vec3(-200, 400, 0),
-      initialVelocityMax: new Vec3(200, 500, 0),
+      initialVelocityMin: new Vec3(-40, 400, 0),
+      initialVelocityMax: new Vec3(40, 500, 0),
       gravity: this.GRAVITY_PIXELS,
       airDensity: 1.225,
       rotationSpeed: 360,
@@ -96,7 +102,7 @@ export class ConfettiParticle extends Component {
         new Color(255, 69, 0),
         new Color(255, 105, 180),
       ],
-      shapes: ['square', 'circle', 'triangle', 'rectangle'],
+      shapes: ['rectangle', 'square'],
       massRange: { min: 0.0015, max: 0.002 }, // kg - very light confetti pieces
     };
 
@@ -135,35 +141,21 @@ export class ConfettiParticle extends Component {
   /**
    * Create a simple confetti shape and set its physical properties
    */
-  private createConfettiShape(shape: string): void {
+  private createConfettiShape(shape: Shape): void {
     const uiTransform = this.node.getComponent(UITransform);
     if (!uiTransform) return;
 
     let width: number, height: number;
 
     switch (shape) {
-      case 'square':
-        width = height = 12;
-        this.dragCoefficient = 1.05; // Square has high drag
-        break;
-      case 'circle':
-        width = height = 10;
-        this.dragCoefficient = 0.47; // Circle is more aerodynamic
-        break;
-      case 'triangle':
-        width = 10;
-        height = 12;
-        this.dragCoefficient = 1.2; // Triangle has highest drag due to sharp edges
-        break;
       case 'rectangle':
         width = 15;
         height = 10;
         this.dragCoefficient = 0.98;
         break;
-      default:
-        width = 8;
-        height = 16;
-        this.dragCoefficient = 1.1;
+      case 'square':
+        width = height = 12;
+        this.dragCoefficient = 1.05; // Square has high drag
         break;
     }
 
@@ -195,7 +187,7 @@ export class ConfettiParticle extends Component {
    */
   private calculateDragForce(velocity: Vec3): Vec3 {
     const speed = velocity.length(); // |v|
-    if (speed === 0) return new Vec3(0, 0, 0);
+    if (speed === 0 || !isFinite(speed)) return new Vec3(0, 0, 0);
 
     // Convert velocity from pixels/s to m/s for calculation
     const speedMS = speed / this.PIXELS_PER_METER;
@@ -206,6 +198,11 @@ export class ConfettiParticle extends Component {
 
     // Convert back to pixel-based force (N * pixels/m / kg = pixels/s²)
     const dragForcePixels = (dragForceMagnitude * this.PIXELS_PER_METER) / this.mass;
+
+    // Safety check to prevent infinite or NaN values
+    if (!isFinite(dragForcePixels) || dragForcePixels > 10000) {
+      return new Vec3(0, 0, 0);
+    }
 
     // Drag force opposes velocity direction
     const velocityDirection = velocity.clone().normalize();
@@ -233,28 +230,33 @@ export class ConfettiParticle extends Component {
     // Net force = gravity + drag
     const netForce = gravityForce.add(dragForce);
 
-    // Apply force to update velocity: F = ma, so a = F/m
-    // Since our forces are already in acceleration units (pixels/s²), we can apply directly
-    this.velocity.x += netForce.x * deltaTime;
-    this.velocity.y += netForce.y * deltaTime;
+    // Safety check for net force
+    if (!isFinite(netForce.x) || !isFinite(netForce.y)) {
+      netForce.set(0, -this.gravity, 0); // Fallback to just gravity
+    }
 
-    // Optional: Debug terminal velocity approach
     const currentSpeed = this.velocity.length();
-    if (currentSpeed > this.terminalVelocity * 1.1) {
-      // If we're significantly over terminal velocity, something might be wrong
-      // This is just for debugging - in real physics this should naturally balance
-      console.log(
-        `Confetti speed (${currentSpeed.toFixed(1)}) exceeds terminal velocity (${this.terminalVelocity.toFixed(1)})`
-      );
+    if (currentSpeed > -this.terminalVelocity * 1.1) {
+      // Apply force to update velocity: F = ma, so a = F/m
+      // Since our forces are already in acceleration units (pixels/s²), we can apply directly
+      this.velocity.x += netForce.x * deltaTime;
+      this.velocity.y += netForce.y * deltaTime;
+    }
+
+    // Safety check for velocity
+    if (!isFinite(this.velocity.x) || !isFinite(this.velocity.y)) {
+      this.velocity.set(0, 0, 0); // Reset to zero if infinite
     }
 
     // Update position based on velocity
     const currentPos = this.node.position;
-    this.node.setPosition(
-      currentPos.x + this.velocity.x * deltaTime,
-      currentPos.y + this.velocity.y * deltaTime,
-      currentPos.z
-    );
+    const newX = currentPos.x + this.velocity.x * deltaTime;
+    const newY = currentPos.y + this.velocity.y * deltaTime;
+
+    // Safety check for position
+    if (isFinite(newX) && isFinite(newY)) {
+      this.node.setPosition(newX, newY, currentPos.z);
+    }
 
     // Update rotation
     const currentRotation = this.node.eulerAngles;
@@ -319,12 +321,6 @@ export class ConfettiParticle extends Component {
     }
 
     this.node.active = false;
-
-    this.scheduleOnce(() => {
-      if (this.node && this.node.isValid) {
-        this.node.destroy();
-      }
-    }, 0.1);
   }
 
   /**
